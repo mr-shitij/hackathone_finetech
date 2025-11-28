@@ -2,7 +2,7 @@ import os
 import json
 import yaml
 from crewai import Agent, Task, Crew, Process
-from crewai import Agent, Task, Crew, Process, LLM
+from langchain.llms import Ollama
 from finance_bot.financial_planning.tools.custom_tool import SearchTool
 
 # Define file paths
@@ -17,16 +17,69 @@ def load_config(file_path):
 
 class FinancialPlanningCrew:
     def __init__(self, user_data_json):
-        self.user_data = user_data_json
+        self.user_data = self._enrich_user_data(user_data_json)
         self.agents_config = load_config(AGENTS_CONFIG)
         self.tasks_config = load_config(TASKS_CONFIG)
         self.search_tool = SearchTool()
         
-        # Initialize Ollama LLM using CrewAI's native LLM class
-        self.llm = LLM(
-            model="ollama/mistral-nemo",
+        # Initialize Ollama LLM using LangChain
+        self.llm = Ollama(
+            model="mistral-nemo",
             base_url="http://localhost:11434"
         )
+
+    def _enrich_user_data(self, user_data):
+        """Perform deterministic calculations and inject into user_data"""
+        # Calculate Total Assets
+        assets = user_data['financials'].get('assets', {})
+        total_assets = sum(assets.values()) if assets else 0
+        
+        # Calculate Total Liabilities
+        liabilities = user_data['financials'].get('liabilities', {})
+        total_liabilities = sum(liabilities.values()) if liabilities else 0
+        
+        # Calculate Net Worth (can be negative!)
+        net_worth = total_assets - total_liabilities
+        
+        # Calculate Monthly Cash Flow
+        income = user_data['financials'].get('income', {})
+        expenses = user_data['financials'].get('expenses', {})
+        monthly_income = income.get('monthly_salary', 0)
+        monthly_expenses = expenses.get('monthly_fixed', 0) + expenses.get('monthly_variable', 0)
+        monthly_surplus = monthly_income - monthly_expenses
+        
+        # Annual figures
+        annual_bonus = income.get('annual_bonus', 0)
+        total_annual_income = (monthly_income * 12) + annual_bonus
+        
+        # Savings rate
+        if total_annual_income > 0:
+            annual_savings = (monthly_surplus * 12)
+            savings_rate = (annual_savings / total_annual_income) * 100
+        else:
+            savings_rate = 0
+        
+        # Inject pre-calculated values
+        if 'pre_calculated_metrics' not in user_data:
+            user_data['pre_calculated_metrics'] = {}
+            
+        user_data['pre_calculated_metrics'].update({
+            'total_assets': total_assets,
+            'total_liabilities': total_liabilities,
+            'net_worth': net_worth,
+            'monthly_income': monthly_income,
+            'monthly_expenses': monthly_expenses,
+            'monthly_surplus': monthly_surplus,
+            'total_annual_income': total_annual_income,
+            'savings_rate': round(savings_rate, 2),
+            'has_negative_cash_flow': monthly_surplus < 0,
+            'is_overleveraged': total_liabilities > (total_annual_income * 5) if total_annual_income > 0 else False
+        })
+        
+        if monthly_surplus < 0:
+            user_data['pre_calculated_metrics']['critical_warning'] = f"User has negative cash flow of ₹{abs(monthly_surplus):,}/month. URGENT expense reduction or income increase required."
+            
+        return user_data
 
     def create_agents(self):
         self.financial_analyst = Agent(

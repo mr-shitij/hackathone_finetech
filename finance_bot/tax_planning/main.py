@@ -1,13 +1,10 @@
 import os
 import json
 import yaml
-from crewai import Agent, Task, Crew, Process, LLM
+from crewai import Agent, Task, Crew, Process
+from langchain.llms import Ollama
 from finance_bot.tax_planning.tools.tax_calculator import TaxCalculatorTool
-
-# Import search tool from financial planning
-import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'financial_planning'))
-from tools.custom_tool import SearchTool
+from finance_bot.financial_planning.tools.custom_tool import SearchTool
 
 # Define file paths
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -29,9 +26,9 @@ class TaxPlanningCrew:
         self.tax_calculator_tool = TaxCalculatorTool()
         self.search_tool = SearchTool()
         
-        # Initialize Ollama LLM using CrewAI's native LLM class
-        self.llm = LLM(
-            model="ollama/mistral-nemo",
+        # Initialize Ollama LLM using LangChain
+        self.llm = Ollama(
+            model="mistral-nemo",
             base_url="http://localhost:11434"
         )
 

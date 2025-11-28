@@ -1,0 +1,200 @@
+financial_analysis_task:
+  description: >
+    You are analyzing financial data from a Pixpoc AI call. The user provided information during a conversation.
+    
+    Here is the complete analysis data in JSON format:
+    {analysis_data}
+    
+    YOUR TASK:
+    1. EXTRACT key financial information from the analysis data:
+       - Monthly/Annual Income
+       - Monthly/Annual Expenses
+       - Savings and Assets
+       - Liabilities and Debts
+       - Financial Goals mentioned
+       - Risk profile indicators
+       
+    2. CALCULATE key metrics:
+       - Net Worth = Total Assets - Total Liabilities
+       - Monthly Cash Flow = Income - Expenses
+       - Savings Rate = (Savings / Income) * 100
+       - Debt-to-Income Ratio
+       
+    3. IDENTIFY:
+       - Financial strengths
+       - Areas of concern
+       - Red flags (negative cash flow, high debt, no emergency fund, etc.)
+       - Opportunities
+    
+    IMPORTANT: Work with whatever data is available in the JSON. Be flexible and adaptive.
+    If certain fields are missing, note it in your analysis.
+    
+  expected_output: >
+    A structured financial analysis report containing:
+    1. Financial Snapshot (Income, Expenses, Assets, Liabilities)
+    2. Key Metrics (Net Worth, Cash Flow, Savings Rate)
+    3. Financial Health Assessment
+    4. Critical Alerts (if any)
+    5. Identified Gaps and Opportunities
+
+tax_planning_task:
+  description: >
+    You are analyzing tax situation from the Pixpoc call data.
+    
+    Here is the complete analysis data:
+    {analysis_data}
+    
+    YOUR TASK:
+    1. EXTRACT tax-related information:
+       - Annual Income (salary, business, other sources)
+       - Current investments in tax-saving instruments (80C, 80D, etc.)
+       - Any deductions mentioned
+       
+    2. CALCULATE using your TaxCalculatorTool:
+       - Tax liability under Old Regime
+       - Tax liability under New Regime
+       - Potential tax savings opportunities
+       
+    3. RECOMMEND:
+       - Which regime is beneficial
+       - How to optimize deductions
+       - Tax-saving investment suggestions
+    
+    Work with available data flexibly. If complete tax info isn't available,
+    provide general tax planning guidance based on income level.
+    
+  expected_output: >
+    A tax planning analysis containing:
+    1. Current Tax Situation
+    2. Tax Liability Calculations (both regimes if possible)
+    3. Regime Recommendation
+    4. Tax Optimization Strategies
+    5. Deduction Opportunities
+
+research_task:
+  description: >
+    Based on the financial analysis and user's profile from:
+    {analysis_data}
+    
+    YOUR TASK:
+    1. RESEARCH suitable financial products:
+       - Mutual Funds / ETFs matching risk profile
+       - Insurance products (Term Life, Health) if gaps identified
+       - Tax-saving instruments (ELSS, PPF, NPS, etc.)
+       - Emergency fund options
+       
+    2. USE YOUR SEARCH TOOLS to find:
+       - Current market leaders in each category
+       - Latest interest rates and returns
+       - Recommended fund houses and policies
+       
+    3. MATCH products to:
+       - User's risk appetite
+       - Investment horizon
+       - Financial goals
+       - Tax planning needs
+    
+  expected_output: >
+    A curated product research report with:
+    1. Recommended Investment Products (with names and reasons)
+    2. Insurance Recommendations (if applicable)
+    3. Tax-saving Instruments
+    4. Emergency Fund Strategy
+
+strategy_task:
+  description: >
+    You have context from Financial Analysis, Tax Planning, and Product Research.
+    
+    YOUR TASK:
+    Create a comprehensive, integrated financial strategy that addresses:
+    
+    1. ASSET ALLOCATION:
+       - Recommended split (Equity/Debt/Gold/Others)
+       - Based on age, goals, and risk profile
+       
+    2. GOAL-BASED PLANNING:
+       - Short-term goals (1-3 years)
+       - Medium-term goals (3-7 years)
+       - Long-term goals (7+ years)
+       - How to achieve each goal
+       
+    3. TAX OPTIMIZATION:
+       - Integrate tax-saving with investment strategy
+       - Maximize deductions while building wealth
+       
+    4. RISK MANAGEMENT:
+       - Insurance coverage recommendations
+       - Emergency fund strategy
+       
+    5. ACTION ROADMAP:
+       - Prioritized steps
+       - Timeline
+       - Milestones
+    
+  expected_output: >
+    A comprehensive financial strategy document with:
+    1. Recommended Asset Allocation
+    2. Goal-Based Investment Plan
+    3. Tax-Optimized Wealth Building Strategy
+    4. Risk Management Framework
+    5. Phased Action Roadmap
+
+report_task:
+  description: >
+    Compile the FINAL COMPREHENSIVE FINANCIAL PLAN REPORT for the user.
+    
+    You have access to:
+    - Financial Analysis
+    - Tax Planning Analysis
+    - Product Research
+    - Comprehensive Strategy
+    
+    Original analysis data for reference:
+    {analysis_data}
+    
+    CREATE A PROFESSIONAL MARKDOWN REPORT with these sections:
+    
+    # Executive Summary
+    - Quick overview of current financial health
+    - Top 3 recommendations
+    
+    # Financial Health Check
+    - Current snapshot (income, expenses, assets, liabilities)
+    - Key metrics and ratios
+    - Strengths and concerns
+    
+    # Tax Planning
+    - Current tax situation
+    - Recommended regime
+    - Tax-saving opportunities
+    
+    # Investment Strategy
+    - Recommended asset allocation
+    - Specific product recommendations
+    - Expected returns and timeline
+    
+    # Goal Achievement Roadmap
+    - Each goal with dedicated plan
+    - Required monthly investments
+    - Timeline to achievement
+    
+    # Risk Management
+    - Insurance recommendations
+    - Emergency fund plan
+    
+    # Action Checklist
+    - Immediate actions (this month)
+    - Short-term actions (3-6 months)
+    - Long-term actions (1+ year)
+    
+    # Conclusion
+    - Encouraging summary
+    - Next steps
+    
+    TONE: Professional yet warm, empowering, action-oriented
+    FORMAT: Use Markdown with clear headings, bullet points, and tables where appropriate
+    
+  expected_output: >
+    A complete, well-formatted Markdown financial plan report ready for delivery,
+    typically 1500-2500 words, covering all aspects of the user's financial life.
+

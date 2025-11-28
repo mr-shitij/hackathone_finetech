@@ -89,38 +89,22 @@ class PixpocClient:
                     logger.info(f"Call initiated successfully: {result['data']['call']['id']}")
                     return result["data"]
                 else:
-                    logger.error(f"API returned success=false: {result.get('message')}")
-                    return self._get_demo_response(phone_number, "api_error")
+                    error_msg = f"API returned success=false: {result.get('message')}"
+                    logger.error(error_msg)
+                    raise Exception(error_msg)
             else:
-                logger.error(f"Failed to initiate call: HTTP {response.status_code}")
-                logger.error(f"Response: {response.text}")
-                return self._get_demo_response(phone_number, "http_error")
+                error_msg = f"Failed to initiate call: HTTP {response.status_code} - {response.text}"
+                logger.error(error_msg)
+                raise Exception(error_msg)
                 
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Network error initiating call: {e}"
+            logger.error(error_msg)
+            raise Exception(error_msg)
         except Exception as e:
-            logger.error(f"Error initiating call: {e}")
-            return self._get_demo_response(phone_number, "exception")
-    
-    def _get_demo_response(self, phone_number: str, reason: str) -> Dict[str, Any]:
-        """Generate demo/mock response for testing"""
-        return {
-            "call": {
-                "id": f"demo-call-{phone_number[-4:]}",
-                "trackingId": f"demo-tracking-{phone_number[-4:]}",
-                "status": "INITIATED",
-                "toNumber": phone_number,
-                "message": f"Demo mode: Call would be initiated in production (reason: {reason})"
-            },
-            "contact": {
-                "id": f"demo-contact-{phone_number[-4:]}",
-                "phoneNumber": phone_number,
-                "name": "Demo User"
-            },
-            "campaign": {
-                "id": f"temp-campaign-{phone_number[-4:]}",
-                "name": "Single Call Campaign"
-            }
-        }
-    
+            error_msg = f"Error initiating call: {e}"
+            logger.error(error_msg)
+            raise
     async def get_call_details(self, call_id: str) -> Dict[str, Any]:
         """
         Get details of a specific call.

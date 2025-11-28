@@ -26,60 +26,77 @@ load_dotenv()
 app = FastAPI(title="FinanceBot Webhook Server")
 
 
+class AnalysisData(BaseModel):
+    """Analysis data from Pixpoc"""
+    status: str
+    metadata: Optional[dict] = None
+    rawResponse: Optional[str] = None
+
+
 class PixpocCallback(BaseModel):
     """
-    Pixpoc callback payload.
-    Pixpoc may send either callId or callSid (tracking_id).
+    Pixpoc callback payload - actual format from their system.
+    
+    This is sent when analysis completes after a call.
     """
-    callId: Optional[str] = None  # UUID call ID
-    callSid: Optional[str] = None  # Tracking ID (this is what Pixpoc typically sends)
-    trackingId: Optional[str] = None  # Alternative field name
-    contactId: Optional[str] = None
-    status: str
-    duration: Optional[int] = None
+    event: str  # 'analysis_completed'
+    callSid: str  # Tracking ID from telephony provider
+    callId: str  # Call UUID
+    callType: str  # 'inbound' | 'outbound'
+    status: str  # 'success' | 'failed' | 'disabled' | 'no_transcript'
+    analysis: Optional[AnalysisData] = None
+    error: Optional[str] = None
+    timestamp: str  # ISO timestamp
 
 
-async def process_completed_call(call_id: str, contact_id: str, phone_number: str):
+async def process_completed_call(
+    call_id: str, 
+    contact_id: str, 
+    phone_number: str,
+    analysis_data: Optional[dict] = None
+):
     """
     Background task to process completed call.
     
-    1. Fetch Pixpoc data (using tracking_id/call_id)
-    2. Run AI agent
-    3. Generate PDF
-    4. Save to database
+    1. Pass analysis data directly to AI agent
+    2. Generate report using AI agent
+    3. Generate PDF and save
     
     Args:
-        call_id: Pixpoc call UUID or tracking ID
+        call_id: Pixpoc call UUID
         contact_id: Pixpoc contact ID
-        phone_number: User's phone number (from database lookup)
+        phone_number: User's phone number
+        analysis_data: Analysis data from webhook callback
     """
     try:
         logger.info(f"Processing call: {call_id} for {phone_number}")
         
         # Initialize services
-        pixpoc_client = PixpocClient(
-            base_url=os.getenv("PIXPOC_API_BASE_URL"),
-            api_key=os.getenv("PIXPOC_API_KEY")
-        )
-        
         agent_service = AgentService()
-        report_service = ReportService(storage_path=os.getenv("REPORTS_PATH", "./reports"))
         
-        # Fetch all Pixpoc data using the call_id (tracking_id works too)
-        logger.info(f"Fetching Pixpoc data for call {call_id}...")
-        pixpoc_data = await pixpoc_client.get_full_call_data(call_id)
+        # Use absolute path for reports to ensure they're in the project root
+        reports_path = os.getenv("REPORTS_PATH", "./reports")
+        if not os.path.isabs(reports_path):
+            # Convert relative path to absolute from project root
+            project_root = Path(__file__).parent.parent
+            reports_path = project_root / reports_path
         
-        # Determine agent type
-        agent_type = "financial_planning"  # Default
-        summary = pixpoc_data.get("analysis", {}).get("metadata", {}).get("summary", "").lower()
-        if "tax" in summary:
-            agent_type = "tax_planning"
+        report_service = ReportService(storage_path=str(reports_path))
         
+        # Pass analysis data directly to agent
+        if not analysis_data:
+            logger.error("No analysis data provided")
+            raise ValueError("Analysis data is required")
+        
+        logger.info(f"Analysis data received: {list(analysis_data.keys())}")
+        
+        # Use comprehensive planning (financial + tax)
+        agent_type = "comprehensive_planning"
         logger.info(f"Running {agent_type} agent...")
         
-        # Run agent
+        # Run agent with analysis data
         markdown_report = await agent_service.process_call_and_generate_report(
-            pixpoc_data=pixpoc_data,
+            pixpoc_data=analysis_data,
             agent_type=agent_type
         )
         
@@ -92,7 +109,7 @@ async def process_completed_call(call_id: str, contact_id: str, phone_number: st
             call_id=call_id
         )
         
-        # Update database
+        # Update database - only store report info
         logger.info("Updating database...")
         update_call_status(call_id, "completed")
         
@@ -105,24 +122,6 @@ async def process_completed_call(call_id: str, contact_id: str, phone_number: st
             file_path=report_metadata['pdf_path']
         )
         
-        # Extract and save financial data
-        memory = pixpoc_data.get("memory", {})
-        financials = memory.get("financials", {})
-        income_data = financials.get("income", {})
-        expense_data = financials.get("expenses", {})
-        
-        monthly_income = income_data.get("monthly_salary", 0)
-        monthly_expenses = expense_data.get("monthly_fixed", 0) + expense_data.get("monthly_variable", 0)
-        savings = monthly_income - monthly_expenses
-        
-        update_financial_data(
-            phone_number=phone_number,
-            income=monthly_income,
-            savings=savings,
-            expenses=monthly_expenses,
-            data_dict=memory
-        )
-        
         logger.info(f"✅ Call processing completed: {call_id}")
         
     except Exception as e:
@@ -133,73 +132,101 @@ async def process_completed_call(call_id: str, contact_id: str, phone_number: st
 @app.post("/webhook/pixpoc")
 async def pixpoc_webhook(payload: PixpocCallback, background_tasks: BackgroundTasks):
     """
-    Receive Pixpoc callbacks.
-    Pixpoc sends tracking_id (callSid) in callbacks, not the UUID call_id.
-    We need to look up the call in our database to get the full details.
+    Receive Pixpoc callbacks when analysis completes.
+    
+    Payload format:
+    {
+      "event": "analysis_completed",
+      "callSid": "call-tracking-id",
+      "callId": "uuid",
+      "callType": "outbound",
+      "status": "success",
+      "analysis": {
+        "status": "COMPLETED",
+        "metadata": {...},
+        "rawResponse": "..."
+      },
+      "timestamp": "2024-01-01T12:00:00Z"
+    }
     """
     logger.info("="*70)
     logger.info("📞 RECEIVED PIXPOC WEBHOOK CALLBACK")
     logger.info("="*70)
-    logger.info(f"Full Payload: {payload.dict()}")
+    logger.info(f"Event: {payload.event}")
     logger.info(f"Call ID: {payload.callId}")
     logger.info(f"Call SID: {payload.callSid}")
-    logger.info(f"Tracking ID: {payload.trackingId}")
-    logger.info(f"Contact ID: {payload.contactId}")
+    logger.info(f"Call Type: {payload.callType}")
     logger.info(f"Status: {payload.status}")
-    logger.info(f"Duration: {payload.duration}")
+    logger.info(f"Timestamp: {payload.timestamp}")
+    
+    if payload.analysis:
+        logger.info(f"Analysis Status: {payload.analysis.status}")
+        logger.info(f"Analysis Metadata: {payload.analysis.metadata}")
+    
+    if payload.error:
+        logger.error(f"Error: {payload.error}")
+    
+    logger.info(f"Full Payload: {payload.dict()}")
     logger.info("="*70)
     
-    if payload.status != "COMPLETED":
-        logger.warning(f"Call not completed: {payload.status}")
-        update_call_status(payload.callId or payload.callSid or payload.trackingId, payload.status)
-        return {"success": True, "message": f"Call status: {payload.status}"}
+    # Check if analysis was successful
+    if payload.status != "success":
+        logger.warning(f"Analysis not successful: {payload.status}")
+        if payload.error:
+            logger.error(f"Error: {payload.error}")
+        
+        # Update call status
+        update_call_status(payload.callId, f"analysis_{payload.status}")
+        
+        return {
+            "success": True, 
+            "message": f"Analysis status: {payload.status}",
+            "error": payload.error
+        }
     
-    # Extract the identifier (could be callId, callSid, or trackingId)
-    tracking_id = payload.callSid or payload.trackingId
-    call_uuid = payload.callId
-    contact_id = payload.contactId
-    
-    logger.info(f"Looking up call - UUID: {call_uuid}, Tracking: {tracking_id}")
-    
-    # Try to find the call in database using tracking_id or call_id
+    # Look up call in database using tracking_id (callSid) or call_id
     call_data = None
     
-    if tracking_id:
-        call_data = get_call_by_tracking_id(tracking_id)
-        logger.info(f"Lookup by tracking_id ({tracking_id}): {call_data is not None}")
+    # Try tracking_id first (most reliable)
+    if payload.callSid:
+        call_data = get_call_by_tracking_id(payload.callSid)
+        logger.info(f"Lookup by callSid ({payload.callSid}): {call_data is not None}")
     
-    if not call_data and call_uuid:
-        call_data = get_call_by_id(call_uuid)
-        logger.info(f"Lookup by call_id ({call_uuid}): {call_data is not None}")
+    # Fallback to call_id
+    if not call_data and payload.callId:
+        call_data = get_call_by_id(payload.callId)
+        logger.info(f"Lookup by callId ({payload.callId}): {call_data is not None}")
     
     if not call_data:
-        logger.error(f"❌ Call not found in database! Tracking: {tracking_id}, UUID: {call_uuid}")
+        logger.error(f"❌ Call not found in database! SID: {payload.callSid}, ID: {payload.callId}")
         return {
             "success": False,
             "error": "Call not found in database",
-            "tracking_id": tracking_id,
-            "call_id": call_uuid
+            "callSid": payload.callSid,
+            "callId": payload.callId
         }
     
     phone_number = call_data['phone_number']
-    actual_call_id = call_data['call_id']  # Use the UUID from database
-    actual_contact_id = contact_id or call_data['contact_id']
+    actual_call_id = call_data['call_id']
+    contact_id = call_data['contact_id']
     
     logger.info(f"✅ Call found: {actual_call_id} for {phone_number}")
+    logger.info(f"📊 Starting background processing...")
     
-    # Process in background with correct IDs
+    # Process in background
     background_tasks.add_task(
         process_completed_call,
         call_id=actual_call_id,
-        contact_id=actual_contact_id,
-        phone_number=phone_number
+        contact_id=contact_id,
+        phone_number=phone_number,
+        analysis_data=payload.analysis.dict() if payload.analysis else None
     )
     
     return {
         "success": True,
         "message": "Processing started",
         "callId": actual_call_id,
-        "trackingId": tracking_id,
+        "callSid": payload.callSid,
         "phoneNumber": phone_number
     }
 
