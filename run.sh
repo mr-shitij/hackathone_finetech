@@ -78,6 +78,9 @@ echo ""
 echo "🔧 Starting services..."
 echo ""
 
+# Create logs directory if it doesn't exist
+mkdir -p logs
+
 # Start webhook server in background
 echo "📡 Starting webhook server on port 8000..."
 cd webhook_server

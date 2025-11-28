@@ -39,7 +39,9 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             phone_number TEXT,
             call_id TEXT UNIQUE,
+            tracking_id TEXT UNIQUE,
             contact_id TEXT,
+            campaign_id TEXT,
             status TEXT DEFAULT 'initiated',
             created_at TEXT,
             completed_at TEXT,
@@ -159,8 +161,17 @@ def get_user_financial_data(phone_number):
     }
 
 
-def save_call(phone_number, call_id, contact_id=None):
-    """Save call record"""
+def save_call(phone_number, call_id, contact_id=None, tracking_id=None, campaign_id=None):
+    """
+    Save call record with full Pixpoc response data.
+    
+    Args:
+        phone_number: User's phone number
+        call_id: Pixpoc call UUID
+        contact_id: Pixpoc contact ID
+        tracking_id: Pixpoc tracking ID (callSid) - used for callbacks
+        campaign_id: Pixpoc campaign ID
+    """
     ensure_user_exists(phone_number)
     
     conn = get_connection()
@@ -168,13 +179,20 @@ def save_call(phone_number, call_id, contact_id=None):
     
     try:
         c.execute('''
-            INSERT INTO calls (phone_number, call_id, contact_id, status, created_at)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (phone_number, call_id, contact_id, 'initiated', datetime.now().isoformat()))
+            INSERT INTO calls (phone_number, call_id, tracking_id, contact_id, campaign_id, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (phone_number, call_id, tracking_id, contact_id, campaign_id, 'initiated', datetime.now().isoformat()))
         conn.commit()
+        print(f"✅ Call saved: {call_id} (tracking: {tracking_id})")
     except sqlite3.IntegrityError:
-        # Call already exists
-        pass
+        # Call already exists, update with new data
+        c.execute('''
+            UPDATE calls 
+            SET tracking_id = ?, contact_id = ?, campaign_id = ?
+            WHERE call_id = ?
+        ''', (tracking_id, contact_id, campaign_id, call_id))
+        conn.commit()
+        print(f"✅ Call updated: {call_id}")
     
     conn.close()
 
@@ -211,6 +229,69 @@ def get_call_phone_number(call_id):
     conn.close()
     
     return row[0] if row else None
+
+
+def get_call_by_tracking_id(tracking_id):
+    """
+    Get call details by tracking ID (callSid).
+    This is used when Pixpoc sends callbacks with tracking_id.
+    
+    Returns:
+        dict with call_id, phone_number, contact_id, etc. or None
+    """
+    conn = get_connection()
+    c = conn.cursor()
+    
+    c.execute('''
+        SELECT call_id, phone_number, contact_id, campaign_id, status, tracking_id
+        FROM calls 
+        WHERE tracking_id = ?
+    ''', (tracking_id,))
+    
+    row = c.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            'call_id': row[0],
+            'phone_number': row[1],
+            'contact_id': row[2],
+            'campaign_id': row[3],
+            'status': row[4],
+            'tracking_id': row[5]
+        }
+    return None
+
+
+def get_call_by_id(call_id):
+    """
+    Get call details by call ID.
+    
+    Returns:
+        dict with call details or None
+    """
+    conn = get_connection()
+    c = conn.cursor()
+    
+    c.execute('''
+        SELECT call_id, phone_number, contact_id, campaign_id, status, tracking_id
+        FROM calls 
+        WHERE call_id = ?
+    ''', (call_id,))
+    
+    row = c.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            'call_id': row[0],
+            'phone_number': row[1],
+            'contact_id': row[2],
+            'campaign_id': row[3],
+            'status': row[4],
+            'tracking_id': row[5]
+        }
+    return None
 
 
 def save_report(phone_number, report_id, call_id, report_type, filename, file_path):

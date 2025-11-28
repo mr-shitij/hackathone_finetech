@@ -15,7 +15,7 @@ load_dotenv()
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from database.db import get_user_reports, get_user_financial_data, save_call
+from database.db import get_user_reports, get_user_financial_data, save_call, get_call_by_tracking_id
 from services.pixpoc_client import PixpocClient
 
 
@@ -114,6 +114,7 @@ def initiate_call():
     """Initiate Pixpoc call"""
     
     phone = st.session_state.user.get('phone')
+    user_name = st.session_state.user.get('name', 'User')
     
     with st.spinner("📞 Initiating call..."):
         try:
@@ -123,25 +124,36 @@ def initiate_call():
                 api_key=os.getenv("PIXPOC_API_KEY", "")
             )
             
-            agent_id = os.getenv("PIXPOC_AGENT_ID", "demo-agent")
+            agent_id = os.getenv("PIXPOC_AGENT_ID")
+            from_number_id = os.getenv("PIXPOC_FROM_NUMBER_ID")
             
-            # Use the proper Pixpoc client method
+            if not agent_id:
+                st.error("❌ PIXPOC_AGENT_ID not configured in .env file")
+                return
+            
+            # Use the proper Pixpoc client method with user's actual name
             result = client.initiate_call_sync(
                 phone_number=phone,
                 agent_id=agent_id,
-                contact_name=st.session_state.user.get('name', 'User'),
-                contact_data={
-                    "source": "FinanceBot",
-                    "userId": phone,
-                    "loginTime": str(st.session_state.get('login_time', ''))
-                }
+                contact_name=user_name,  # Use actual user name from login
+                from_number_id=from_number_id  # Use configured from number
             )
             
+            # Extract all relevant IDs from Pixpoc response
             call_id = result['call']['id']
+            tracking_id = result['call'].get('trackingId')
             call_status = result['call']['status']
+            contact_id = result['contact']['id']
+            campaign_id = result['campaign']['id']
             
-            # Save to database
-            save_call(phone, call_id)
+            # Save to database with all Pixpoc response data
+            save_call(
+                phone_number=phone,
+                call_id=call_id,
+                contact_id=contact_id,
+                tracking_id=tracking_id,
+                campaign_id=campaign_id
+            )
             
             st.session_state.call_in_progress = True
             st.session_state.current_call_id = call_id
@@ -151,6 +163,7 @@ def initiate_call():
             # Show call details
             st.info(f"""
             📞 **Call Details:**
+            - Contact: **{user_name}**
             - Call ID: `{call_id}`
             - Status: `{call_status}`
             - Number: `{phone}`
@@ -158,6 +171,7 @@ def initiate_call():
             You will receive a call shortly from our AI financial advisor.
             
             **The AI will:**
+            - Greet you by name ({user_name})
             - Ask about your income and expenses
             - Understand your financial goals
             - Assess your risk tolerance
@@ -177,12 +191,14 @@ def initiate_call():
                 st.code(f"""
 API Base URL: {os.getenv('PIXPOC_API_BASE_URL', 'https://app.pixpoc.ai')}
 Agent ID: {os.getenv('PIXPOC_AGENT_ID', 'Not configured')}
+From Number ID: {os.getenv('PIXPOC_FROM_NUMBER_ID', 'Not configured')}
 API Key: {'Configured' if os.getenv('PIXPOC_API_KEY') else 'Not configured'}
 Phone: {phone}
+User Name: {user_name}
 Error: {str(e)}
                 """)
             
-            st.info("💡 **Next Steps:**\n1. Configure PIXPOC_API_KEY in .env file\n2. Configure PIXPOC_AGENT_ID in .env file\n3. Ensure webhook server is running")
+            st.info("💡 **Next Steps:**\n1. Check that all Pixpoc credentials are configured in .env\n2. Ensure webhook server is running\n3. Verify agent ID is correct")
 
 
 def show_recent_reports():

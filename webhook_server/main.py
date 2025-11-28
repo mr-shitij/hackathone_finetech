@@ -18,7 +18,7 @@ sys.path.insert(0, str(project_root))
 from services.pixpoc_client import PixpocClient
 from services.agent_service import AgentService
 from services.report_service import ReportService
-from database.db import update_call_status, save_report, update_financial_data
+from database.db import update_call_status, save_report, update_financial_data, get_call_by_tracking_id, get_call_by_id
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -27,25 +27,34 @@ app = FastAPI(title="FinanceBot Webhook Server")
 
 
 class PixpocCallback(BaseModel):
-    """Pixpoc callback payload"""
-    callId: str
-    callSid: Optional[str] = None
-    contactId: str
+    """
+    Pixpoc callback payload.
+    Pixpoc may send either callId or callSid (tracking_id).
+    """
+    callId: Optional[str] = None  # UUID call ID
+    callSid: Optional[str] = None  # Tracking ID (this is what Pixpoc typically sends)
+    trackingId: Optional[str] = None  # Alternative field name
+    contactId: Optional[str] = None
     status: str
     duration: Optional[int] = None
 
 
-async def process_completed_call(call_id: str, contact_id: str):
+async def process_completed_call(call_id: str, contact_id: str, phone_number: str):
     """
     Background task to process completed call.
     
-    1. Fetch Pixpoc data
+    1. Fetch Pixpoc data (using tracking_id/call_id)
     2. Run AI agent
     3. Generate PDF
     4. Save to database
+    
+    Args:
+        call_id: Pixpoc call UUID or tracking ID
+        contact_id: Pixpoc contact ID
+        phone_number: User's phone number (from database lookup)
     """
     try:
-        logger.info(f"Processing call: {call_id}")
+        logger.info(f"Processing call: {call_id} for {phone_number}")
         
         # Initialize services
         pixpoc_client = PixpocClient(
@@ -56,11 +65,9 @@ async def process_completed_call(call_id: str, contact_id: str):
         agent_service = AgentService()
         report_service = ReportService(storage_path=os.getenv("REPORTS_PATH", "./reports"))
         
-        # Fetch all Pixpoc data
-        logger.info("Fetching Pixpoc data...")
-        pixpoc_data = await pixpoc_client.get_full_call_data(call_id, contact_id)
-        
-        phone_number = pixpoc_data.get("metadata", {}).get("phoneNumber", "unknown")
+        # Fetch all Pixpoc data using the call_id (tracking_id works too)
+        logger.info(f"Fetching Pixpoc data for call {call_id}...")
+        pixpoc_data = await pixpoc_client.get_full_call_data(call_id)
         
         # Determine agent type
         agent_type = "financial_planning"  # Default
@@ -126,25 +133,74 @@ async def process_completed_call(call_id: str, contact_id: str):
 @app.post("/webhook/pixpoc")
 async def pixpoc_webhook(payload: PixpocCallback, background_tasks: BackgroundTasks):
     """
-    Receive Pixpoc callbacks
+    Receive Pixpoc callbacks.
+    Pixpoc sends tracking_id (callSid) in callbacks, not the UUID call_id.
+    We need to look up the call in our database to get the full details.
     """
-    logger.info(f"Received webhook: {payload.dict()}")
+    logger.info("="*70)
+    logger.info("📞 RECEIVED PIXPOC WEBHOOK CALLBACK")
+    logger.info("="*70)
+    logger.info(f"Full Payload: {payload.dict()}")
+    logger.info(f"Call ID: {payload.callId}")
+    logger.info(f"Call SID: {payload.callSid}")
+    logger.info(f"Tracking ID: {payload.trackingId}")
+    logger.info(f"Contact ID: {payload.contactId}")
+    logger.info(f"Status: {payload.status}")
+    logger.info(f"Duration: {payload.duration}")
+    logger.info("="*70)
     
     if payload.status != "COMPLETED":
         logger.warning(f"Call not completed: {payload.status}")
-        return {"success": True, "message": "Call not completed"}
+        update_call_status(payload.callId or payload.callSid or payload.trackingId, payload.status)
+        return {"success": True, "message": f"Call status: {payload.status}"}
     
-    # Process in background
+    # Extract the identifier (could be callId, callSid, or trackingId)
+    tracking_id = payload.callSid or payload.trackingId
+    call_uuid = payload.callId
+    contact_id = payload.contactId
+    
+    logger.info(f"Looking up call - UUID: {call_uuid}, Tracking: {tracking_id}")
+    
+    # Try to find the call in database using tracking_id or call_id
+    call_data = None
+    
+    if tracking_id:
+        call_data = get_call_by_tracking_id(tracking_id)
+        logger.info(f"Lookup by tracking_id ({tracking_id}): {call_data is not None}")
+    
+    if not call_data and call_uuid:
+        call_data = get_call_by_id(call_uuid)
+        logger.info(f"Lookup by call_id ({call_uuid}): {call_data is not None}")
+    
+    if not call_data:
+        logger.error(f"❌ Call not found in database! Tracking: {tracking_id}, UUID: {call_uuid}")
+        return {
+            "success": False,
+            "error": "Call not found in database",
+            "tracking_id": tracking_id,
+            "call_id": call_uuid
+        }
+    
+    phone_number = call_data['phone_number']
+    actual_call_id = call_data['call_id']  # Use the UUID from database
+    actual_contact_id = contact_id or call_data['contact_id']
+    
+    logger.info(f"✅ Call found: {actual_call_id} for {phone_number}")
+    
+    # Process in background with correct IDs
     background_tasks.add_task(
         process_completed_call,
-        call_id=payload.callId,
-        contact_id=payload.contactId
+        call_id=actual_call_id,
+        contact_id=actual_contact_id,
+        phone_number=phone_number
     )
     
     return {
         "success": True,
         "message": "Processing started",
-        "callId": payload.callId
+        "callId": actual_call_id,
+        "trackingId": tracking_id,
+        "phoneNumber": phone_number
     }
 
 
