@@ -1,0 +1,65 @@
+{
+    "user_id": "USER_TAX_001",
+    "personal_info": {
+        "name": "Priya Patel",
+        "pan": "ABCDE1234F",
+        "age": 35,
+        "gender": "Female",
+        "marital_status": "Married",
+        "dependents": 2,
+        "residential_status": "Resident",
+        "employment_status": "Salaried"
+    },
+    "income": {
+        "salary": {
+            "basic_salary": 900000,
+            "hra": 300000,
+            "allowances": 100000,
+            "bonus": 150000
+        },
+        "other_income": {
+            "interest_savings": 15000,
+            "interest_fd": 35000,
+            "dividend": 8000
+        }
+    },
+    "current_investments": {
+        "section_80c": {
+            "ppf": 50000,
+            "elss": 30000,
+            "life_insurance": 25000,
+            "epf": 0
+        },
+        "section_80d": {
+            "health_insurance_self": 18000,
+            "health_insurance_parents": 0
+        },
+        "section_80ccd_1b": {
+            "nps": 0
+        },
+        "home_loan": {
+            "principal_repayment": 0,
+            "interest_paid": 0
+        }
+    },
+    "family_details": {
+        "spouse_working": true,
+        "children_count": 2,
+        "parents_age": {
+            "father": 68,
+            "mother": 65
+        },
+        "parents_health_insurance": false
+    },
+    "financial_goals": {
+        "current_year_tax_saving": true,
+        "retirement_planning": true,
+        "child_education": true
+    },
+    "previous_year_tax": {
+        "fy_2023_24": {
+            "regime_opted": "old",
+            "total_tax_paid": 125000
+        }
+    }
+}

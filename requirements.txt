@@ -1,0 +1,29 @@
+# Streamlit
+streamlit==1.29.0
+plotly==5.18.0
+
+# FastAPI (webhook server)
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+
+# HTTP Client
+httpx==0.25.1
+requests==2.31.0
+
+# PDF Generation
+markdown==3.5.1
+weasyprint==60.1
+
+# CrewAI & AI Agents (compatible versions)
+crewai==0.1.0
+duckduckgo-search==4.1.0
+
+# Utilities
+python-dotenv==1.0.0
+pyyaml==6.0.1
+loguru==0.7.2
+
+# Date/Time
+python-dateutil==2.8.2
+

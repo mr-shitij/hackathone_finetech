@@ -1,0 +1,50 @@
+{
+  "user_id": "EDGE_008",
+  "personal_info": {
+    "name": "Kavita Shah",
+    "age": 42,
+    "gender": "Female",
+    "location": "Ahmedabad, India",
+    "occupation": "Restaurant Owner",
+    "marital_status": "Married",
+    "dependents": 2
+  },
+  "financials": {
+    "income": {
+      "monthly_salary": 100000,
+      "annual_bonus": 500000
+    },
+    "expenses": {
+      "monthly_fixed": 75000,
+      "monthly_variable": 50000
+    },
+    "assets": {
+      "savings_account": 3000000,
+      "fixed_deposits": 1000000,
+      "stocks": 500000,
+      "epf": 0
+    },
+    "liabilities": {
+      "business_loan": 5000000
+    }
+  },
+  "goals": [
+    {
+      "name": "Business Expansion",
+      "target_amount": 3000000,
+      "timeline_years": 3,
+      "priority": "High"
+    },
+    {
+      "name": "Retirement",
+      "target_amount": 40000000,
+      "timeline_years": 18,
+      "priority": "High"
+    }
+  ],
+  "risk_profile": "Aggressive",
+  "insurance": {
+    "life_insurance": "Term plan of 2 Cr",
+    "health_insurance": "Family floater of 15L"
+  }
+}

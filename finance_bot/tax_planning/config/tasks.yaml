@@ -1,0 +1,114 @@
+tax_calculation_task:
+  description: >
+    Analyze the provided user tax data: {user_data}.
+    
+    STEP 1 - Calculate Gross Total Income:
+    - Sum ALL salary components: basic_salary + hra + allowances + bonus
+    - Sum ALL other income: interest_savings + interest_fd + dividend
+    - Add both to get Gross Total Income
+    
+    STEP 2 - Aggregate Current Deductions:
+    - Section 80C: Sum ALL values in section_80c (ppf + elss + life_insurance + epf)
+    - Section 80D: Sum ALL values in section_80d (health_insurance_self + health_insurance_parents)
+    - Section 80CCD(1B): Value from section_80ccd_1b.nps
+    
+    STEP 3 - Use TaxCalculatorTool to calculate OLD REGIME tax:
+    Call the tool with: income=<gross_total_income>, deductions_80c=<sum_80c>, deductions_80d=<sum_80d>, regime="old"
+    Example: TaxCalculatorTool(income=1500000, deductions_80c=150000, deductions_80d=25000, regime="old")
+    
+    STEP 4 - Use TaxCalculatorTool to calculate NEW REGIME tax:
+    Call the tool with: income=<gross_total_income>, regime="new"
+    Example: TaxCalculatorTool(income=1500000, regime="new")
+    
+    STEP 5 - Compare both regimes and recommend the one with LOWER tax liability.
+    
+    CRITICAL: You MUST use the TaxCalculatorTool. Do NOT estimate or calculate manually.
+  expected_output: >
+    A detailed tax calculation report showing:
+    - Gross Total Income: ₹X,XX,XXX (with breakdown)
+    - Current Deductions: Section 80C: ₹X,XX,XXX, Section 80D: ₹XX,XXX
+    - OLD REGIME: Tax liability from TaxCalculatorTool output
+    - NEW REGIME: Tax liability from TaxCalculatorTool output
+    - RECOMMENDATION: [Old/New] Regime saves ₹XX,XXX
+  agent: tax_calculator
+
+deduction_analysis_task:
+  description: >
+    Based on user data ({user_data}) and the tax calculation results from the previous task:
+    
+    STEP 1 - Review Current Deduction Utilization:
+    - Section 80C: Current = ₹X,XX,XXX, Maximum Allowed = ₹1,50,000, Gap = ₹XX,XXX
+    - Section 80D: Current = ₹XX,XXX, Maximum Allowed = ₹25,000 (or ₹50,000 for senior citizens), Gap = ₹X,XXX
+    - Section 80CCD(1B): Current = ₹X, Maximum Allowed = ₹50,000, Gap = ₹50,000
+    - Home Loan Interest (24b): Current = ₹X, Maximum Allowed = ₹2,00,000
+    
+    STEP 2 - Identify Specific Investment Opportunities:
+    For Section 80C gap, recommend specific instruments:
+    - PPF (safe, 7.1% tax-free)
+    - ELSS (market-linked, 3-year lock-in)
+    - Tax-saving FD (5-year lock-in)
+    - NPS Tier-1 (retirement planning)
+    
+    For Section 80D gap, recommend:
+    - Top-up health insurance
+    - Parents' health insurance (if parents are senior citizens, ₹50K limit)
+    
+    For Section 80CCD(1B), recommend:
+    - Additional NPS contribution (exclusive ₹50K benefit)
+    
+    STEP 3 - Calculate Potential Tax Savings:
+    If user fills all gaps, how much additional tax will be saved?
+    Consider user's tax bracket (30%, 20%, or 5%).
+  expected_output: >
+    A comprehensive deduction analysis report with:
+    - Current vs Maximum deduction table (section-wise)
+    - Unutilized deduction amount: ₹X,XX,XXX
+    - Specific investment recommendations with amounts
+    - Potential additional tax savings: ₹XX,XXX
+    - Top 3 priority investments based on gap size and user's situation
+  agent: deduction_analyzer
+
+strategy_task:
+  description: >
+    Using tax calculations and deduction analysis, create a comprehensive tax-saving strategy:
+    1. Recommend optimal tax regime (Old vs New) with clear justification.
+    2. Propose investment allocation to maximize tax savings (80C: ₹1.5L, 80CCD(1B): ₹50K, 80D: ₹25K-50K).
+    3. Suggest salary restructuring options if applicable (HRA, LTA optimization).
+    4. Create timeline for implementation (by March 31 deadline).
+    5. Identify quick wins (immediate actions) vs long-term strategies.
+    6. Consider tax-loss harvesting opportunities for capital gains.
+  expected_output: >
+    A strategic tax planning roadmap including:
+    - Regime selection with comparative analysis
+    - Investment allocation strategy (instrument-wise breakdown)
+    - Month-by-month action plan leading to financial year-end
+    - Estimated total tax savings from strategy implementation
+    - Risk assessment and compliance notes
+  agent: strategy_advisor
+
+report_task:
+  description: >
+    Compile the final Tax Planning Report for user ({user_data}).
+    Your task is to:
+    1. Read the 'old_regime_report' and 'new_regime_report' from the input data.
+    2. Present these reports clearly in your output.
+    3. State which regime has the lower tax liability based on these numbers.
+    
+    IMPORTANT: Do not perform any new calculations. Use the provided numbers as the source of truth.
+    Structure the report professionally with:
+    1. **Executive Summary**: Current tax liability, potential savings, top 3 recommendations.
+    2. **Tax Computation**:
+       - Include the 'old_regime_report' and 'new_regime_report' text blocks from the input.
+       - Ensure you copy the "Total Tax Liability" values exactly as they appear.
+       - Clearly state which regime has the lower tax liability.
+    3. **Deduction Optimization**: Gap analysis and recommendations.
+    4. **Tax-Saving Strategy**: Actionable investment and planning steps.
+    5. **Action Checklist**: Date-specific tasks (e.g., "Invest ₹50K in ELSS by March 15").
+    6. **FAQ Section**: Address common tax planning questions.
+    
+    Use clear markdown formatting, tables for comparisons, and highlight key numbers.
+    Ensure all recommendations are India-specific and compliant with current tax laws.
+  expected_output: >
+    A complete, formatted Markdown tax planning report ready for delivery, including all sections mentioned,
+    with specific rupee amounts, deadlines, and actionable recommendations tailored to the user's situation.
+  agent: report_generator

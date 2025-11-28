@@ -1,0 +1,68 @@
+analysis_task:
+  description: >
+    You are an expert financial analyst. Your job is to analyze the provided user data JSON: {user_data}.
+    
+    STEP 1: EXTRACT PRE-CALCULATED METRICS
+    The following metrics have been PRE-CALCULATED in 'pre_calculated_metrics'. You MUST use these exact values:
+    - Net Worth: {user_data}[pre_calculated_metrics][net_worth]
+    - Monthly Surplus: {user_data}[pre_calculated_metrics][monthly_surplus]
+    - Total Assets: {user_data}[pre_calculated_metrics][total_assets]
+    - Total Liabilities: {user_data}[pre_calculated_metrics][total_liabilities]
+    
+    STEP 2: CHECK FOR CRISIS
+    Check the 'has_negative_cash_flow' flag. If TRUE, you must output a WARNING about negative cash flow.
+    
+    STEP 3: ANALYZE PROFILE
+    - Identify Risk Profile and Goals.
+    - Assess Insurance Gaps.
+    - Identify Red Flags (e.g., high debt).
+    
+    OUTPUT FORMAT:
+    Return a structured analysis summary. Do NOT ask questions. Do NOT be conversational. Just provide the analysis.
+  expected_output: >
+    A structured analysis report containing:
+    1. Financial Snapshot (Net Worth, Cash Flow - using exact pre-calculated numbers)
+    2. Crisis Alerts (if any)
+    3. Risk Profile & Goal Assessment
+    4. Insurance Gap Analysis
+  agent: financial_analyst
+
+research_task:
+  description: >
+    Based on the analysis from the Financial Analyst and the user's profile ({user_data}):
+    1. Search for suitable investment products (Mutual Funds, ETFs, etc.) that match the user's risk profile and goals.
+    2. Search for appropriate insurance policies (Term Life, Health) if coverage gaps were identified.
+    3. Identify relevant government schemes or tax-saving instruments (like PPF, NPS, ELSS) applicable to the user.
+    4. Provide specific product names and current features/rates where possible using your search tools.
+  expected_output: >
+    A research report listing specific recommended financial products, insurance policies, and government schemes with brief reasons for their suitability.
+  agent: research_specialist
+
+strategy_task:
+  description: >
+    Using the analysis and research findings, create a comprehensive financial strategy:
+    1. Define a recommended Asset Allocation (Equity vs. Debt vs. Others).
+    2. Create a step-by-step roadmap to achieve the user's specific goals (Short-term, Medium-term, Long-term).
+    3. Propose a debt repayment strategy if applicable.
+    4. Suggest an Emergency Fund target and how to build it.
+    5. Outline tax optimization strategies.
+  expected_output: >
+    A strategic financial roadmap including asset allocation charts (text description), goal-based action plans, and specific steps for implementation.
+  agent: strategy_advisor
+
+report_task:
+  description: >
+    Compile the final Financial Plan Report for the user ({user_data}).
+    The report should be written in a professional yet encouraging tone.
+    Structure the report as follows:
+    1. **Executive Summary**: Key metrics and top recommendations.
+    2. **Financial Health Check**: Net worth, cash flow, and risk profile.
+    3. **Goal-Based Roadmap**: Specific plans for each of the user's goals.
+    4. **Investment Strategy**: Recommended asset allocation and specific products.
+    5. **Risk Management**: Insurance recommendations.
+    6. **Action Checklist**: Immediate next steps for the user.
+    
+    Ensure all numbers are consistent with the analysis. Use markdown formatting for readability.
+  expected_output: >
+    A complete, formatted Markdown financial plan report ready for delivery to the user.
+  agent: report_generator
