@@ -40,13 +40,16 @@ class ComprehensivePlanningCrew:
         # Get OpenAI API key from environment
         openai_api_key = os.getenv("OPENAI_API_KEY")
         if not openai_api_key:
-            raise ValueError("OPENAI_API_KEY environment variable is required")
+            raise ValueError("OPENAI_API_KEY environment variable is required. Please set it in your environment or .env file.")
+        
+        # Set environment variable for CrewAI (it reads from os.environ)
+        os.environ["OPENAI_API_KEY"] = openai_api_key
         
         # Initialize OpenAI GPT-4o with proper tool support
+        # CrewAI LLM reads OPENAI_API_KEY from environment automatically
         self.llm = LLM(
             model="gpt-4o",
-            temperature=0.1,
-            api_key=openai_api_key
+            temperature=0.1
         )
 
     def create_agents(self):
