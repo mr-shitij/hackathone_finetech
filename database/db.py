@@ -23,7 +23,16 @@ else:
 
 def get_connection():
     """Get database connection"""
-    return sqlite3.connect(DB_PATH)
+    # Ensure directory exists and is writable
+    try:
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        # Try to create parent directory with write permissions
+        import stat
+        os.chmod(DB_PATH.parent, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+    except Exception:
+        pass  # Continue even if chmod fails
+    
+    return sqlite3.connect(str(DB_PATH), timeout=10.0)
 
 
 def init_db():

@@ -25,15 +25,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . /app/
 
-# Create necessary directories with proper permissions
-RUN mkdir -p /app/database /app/reports && \
-    chmod -R 755 /app/database /app/reports
+# Create entrypoint script
+COPY webhook_server/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
-# Initialize database (create file if it doesn't exist)
-RUN python -c "from database.db import init_db; init_db()" || true
-
-# Ensure database directory is writable
-RUN chmod -R 777 /app/database /app/reports
+# Create necessary directories (will be set up at runtime)
+RUN mkdir -p /app/database /app/reports
 
 # Expose port
 EXPOSE 8000
@@ -42,6 +39,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run the application
-CMD ["uvicorn", "webhook_server.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Use entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]
 
