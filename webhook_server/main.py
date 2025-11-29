@@ -356,6 +356,74 @@ async def get_financial_data(phone: str):
         )
 
 
+@app.get("/api/reports/download")
+async def download_report(path: str, filename: str):
+    """
+    Download a report PDF file.
+    
+    Args:
+        path: File path to the PDF (relative to /app/reports or absolute)
+        filename: Filename for download
+        
+    Returns:
+        PDF file stream
+    """
+    try:
+        from fastapi.responses import FileResponse
+        from pathlib import Path
+        import os
+        
+        if not path:
+            raise HTTPException(
+                status_code=400,
+                detail="Path parameter is required"
+            )
+        
+        # Resolve file path
+        file_path = Path(path)
+        
+        # If relative path, make it relative to reports directory
+        if not file_path.is_absolute():
+            reports_base = Path(os.getenv("REPORTS_PATH", "/app/reports"))
+            file_path = reports_base / path.lstrip("/")
+        else:
+            # Ensure it's within the reports directory for security
+            reports_base = Path(os.getenv("REPORTS_PATH", "/app/reports"))
+            try:
+                file_path.relative_to(reports_base.resolve())
+            except ValueError:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access denied: File path outside reports directory"
+                )
+        
+        # Check if file exists
+        if not file_path.exists():
+            logger.error(f"Report file not found: {file_path}")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Report file not found: {path}"
+            )
+        
+        logger.info(f"Serving report file: {file_path} as {filename}")
+        
+        # Return file with proper headers
+        return FileResponse(
+            path=str(file_path),
+            filename=filename or file_path.name,
+            media_type="application/pdf"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error downloading report: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error downloading report: {str(e)}"
+        )
+
+
 @app.get("/health")
 async def health():
     """Health check"""
