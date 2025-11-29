@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile.backend
     container_name: financebot-backend
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     environment:
       - PIXPOC_API_BASE_URL=${PIXPOC_API_BASE_URL:-https://app.pixpoc.ai}
       - PIXPOC_API_KEY=${PIXPOC_API_KEY}
@@ -36,7 +36,7 @@ services:
       dockerfile: ../Dockerfile.frontend
     container_name: financebot-frontend
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3003}:3000"
     environment:
       - PIXPOC_API_BASE_URL=${PIXPOC_API_BASE_URL:-https://app.pixpoc.ai}
       - PIXPOC_API_KEY=${PIXPOC_API_KEY}
