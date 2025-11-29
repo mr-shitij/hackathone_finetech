@@ -11,6 +11,7 @@ import sys
 import os
 from pathlib import Path
 from loguru import logger
+from openai import OpenAI
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -23,6 +24,9 @@ from database.db import update_call_status, save_report, update_financial_data, 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Initialize OpenAI client
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = FastAPI(title="FinanceBot Webhook Server")
 
@@ -59,6 +63,66 @@ class PixpocCallback(BaseModel):
     timestamp: str  # ISO timestamp
 
 
+async def generate_memory_summary(existing_memory: str, new_report: str) -> str:
+    """
+    Generate a cumulative summary combining existing memory and new report.
+    
+    Args:
+        existing_memory: Previous memory/summary from contact metadata
+        new_report: New financial report generated from latest call
+        
+    Returns:
+        Condensed summary combining both
+    """
+    try:
+        prompt = f"""You are a financial advisor assistant. Create a concise but comprehensive summary that combines the existing contact memory with the new financial report.
+
+The summary should:
+- Be clear and structured
+- Highlight key financial information (income, savings, goals, investments)
+- Note any changes or updates from the new report
+- Keep important historical context from previous interactions
+- Be professional and easy to read
+- Maximum 500 words
+
+EXISTING MEMORY:
+{existing_memory if existing_memory else "No previous interactions recorded."}
+
+NEW REPORT:
+{new_report}  
+
+Generate a comprehensive summary that captures the complete financial profile:"""
+
+        logger.info("Generating memory summary using OpenAI...")
+        
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a financial advisor assistant that creates concise, structured summaries of client financial information."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.3,
+            max_tokens=1000
+        )
+        
+        summary = response.choices[0].message.content.strip()
+        logger.info(f"Generated summary: {len(summary)} characters")
+        
+        return summary
+        
+    except Exception as e:
+        logger.error(f"Failed to generate memory summary: {e}")
+        # Fallback: return concatenated version with truncation
+        fallback = f"{existing_memory}\n\n--- Latest Report ---\n{new_report[:1000]}"
+        return fallback[:2000]
+
+
 async def process_completed_call(
     call_id: str, 
     contact_id: str, 
@@ -71,6 +135,7 @@ async def process_completed_call(
     1. Pass analysis data directly to AI agent
     2. Generate report using AI agent
     3. Generate PDF and save
+    4. Update contact metadata with cumulative summary
     
     Args:
         call_id: Pixpoc call UUID
@@ -83,6 +148,8 @@ async def process_completed_call(
         
         # Initialize services
         agent_service = AgentService()
+        pixpoc_api_key = os.getenv("PIXPOC_API_KEY", "")
+        pixpoc_client = PixpocClient(api_key=pixpoc_api_key)
         
         # Use absolute path for reports to ensure they're in the project root
         reports_path = os.getenv("REPORTS_PATH", "./reports")
@@ -134,6 +201,40 @@ async def process_completed_call(
         )
         
         logger.info(f"✅ Report saved to database for {phone_number}")
+        
+        # Update Pixpoc contact metadata with cumulative summary
+        if contact_id:
+            try:
+                logger.info(f"📝 Updating contact metadata for {contact_id}...")
+                
+                # Get existing contact metadata
+                existing_metadata = {}
+                existing_memory = ""
+                try:
+                    contact_data = await pixpoc_client.get_contact_metadata(contact_id)
+                    existing_metadata = contact_data.get("metadata", {})
+                    existing_memory = existing_metadata.get("memory", "")
+                    logger.info(f"Retrieved existing memory: {len(existing_memory)} characters")
+                except Exception as e:
+                    logger.warning(f"Could not fetch existing metadata (contact might be new): {e}")
+                
+                # Generate cumulative summary
+                logger.info("Generating cumulative memory summary...")
+                new_summary = await generate_memory_summary(existing_memory, markdown_report)
+                
+                # Update contact metadata with new summary
+                await pixpoc_client.update_contact_metadata(
+                    contact_id=contact_id,
+                    metadata={
+                        "memory": new_summary,
+                    }
+                )
+                
+                logger.info(f"✅ Contact metadata updated with memory summary ({len(new_summary)} chars)")
+                
+            except Exception as e:
+                logger.error(f"⚠️ Failed to update contact metadata (non-critical): {e}")
+                # Don't fail the entire process if metadata update fails
         
         logger.info(f"✅ Call processing completed: {call_id}")
         

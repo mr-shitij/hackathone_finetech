@@ -247,6 +247,74 @@ class PixpocClient:
             logger.error(f"Failed to get inbound call: {e}")
             raise
     
+    async def get_contact_metadata(self, contact_id: str) -> Dict[str, Any]:
+        """
+        Get contact metadata for a specific contact.
+        
+        Endpoint: GET /api/v1/contacts/{contactId}/metadata
+        
+        Args:
+            contact_id: Contact UUID
+            
+        Returns:
+            Contact metadata with contactId, phoneNumber, metadata, timestamps
+        """
+        url = f"{self.base_url}/api/v1/contacts/{contact_id}/metadata"
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=self.headers, timeout=30.0)
+                response.raise_for_status()
+                data = response.json()
+                
+                if data.get("success"):
+                    logger.info(f"Retrieved metadata for contact {contact_id}")
+                    return data["data"]
+                else:
+                    raise Exception(data.get("error", "Unknown error"))
+        except Exception as e:
+            logger.error(f"Failed to get contact metadata: {e}")
+            raise
+    
+    async def update_contact_metadata(
+        self, 
+        contact_id: str, 
+        metadata: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Update contact metadata (merges with existing metadata).
+        
+        Endpoint: PUT /api/v1/contacts/{contactId}/metadata
+        
+        Args:
+            contact_id: Contact UUID
+            metadata: Metadata key-value pairs to update/merge
+            
+        Returns:
+            Updated contact metadata
+        """
+        url = f"{self.base_url}/api/v1/contacts/{contact_id}/metadata"
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.put(
+                    url, 
+                    json={"metadata": metadata},
+                    headers=self.headers, 
+                    timeout=30.0
+                )
+                response.raise_for_status()
+                data = response.json()
+                
+                if data.get("success"):
+                    logger.info(f"Updated metadata for contact {contact_id}")
+                    return data["data"]
+                else:
+                    raise Exception(data.get("error", "Unknown error"))
+        except Exception as e:
+            logger.error(f"Failed to update contact metadata: {e}")
+            raise
+    
     async def get_full_call_data(self, call_id: str) -> Dict[str, Any]:
         """
         Fetch all data for a completed call (details, analysis, transcript).
