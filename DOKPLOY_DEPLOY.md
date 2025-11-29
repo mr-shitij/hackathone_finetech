@@ -48,6 +48,7 @@ git push origin main
    PIXPOC_API_BASE_URL=https://app.pixpoc.ai
    PIXPOC_API_KEY=your_actual_api_key
    PIXPOC_AGENT_ID=your_actual_agent_id
+   PIXPOC_COACHING_AGENT_ID=your_coaching_agent_id
    PIXPOC_FROM_NUMBER_ID=your_from_number_id
    BACKEND_URL=http://backend:8000
    ```
