@@ -241,6 +241,49 @@ async def pixpoc_webhook(payload: PixpocCallback, background_tasks: BackgroundTa
     }
 
 
+@app.post("/api/calls/save")
+async def save_call(request: dict):
+    """
+    Save call details to database after initiating via frontend.
+    Called by Next.js after Pixpoc call is initiated.
+    """
+    try:
+        phone = request.get("phone")
+        call_id = request.get("call_id")
+        contact_id = request.get("contact_id")
+        tracking_id = request.get("tracking_id")
+        campaign_id = request.get("campaign_id")
+        
+        if not phone or not call_id:
+            raise HTTPException(
+                status_code=400,
+                detail="phone and call_id are required"
+            )
+        
+        logger.info(f"Saving call to database: {call_id} for {phone}")
+        
+        db_save_call(
+            phone_number=phone,
+            call_id=call_id,
+            contact_id=contact_id,
+            tracking_id=tracking_id,
+            campaign_id=campaign_id
+        )
+        
+        return {
+            "success": True,
+            "message": "Call saved successfully",
+            "call_id": call_id
+        }
+        
+    except Exception as e:
+        logger.error(f"Error saving call: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error saving call: {str(e)}"
+        )
+
+
 @app.get("/health")
 async def health():
     """Health check"""

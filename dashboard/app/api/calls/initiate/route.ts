@@ -63,6 +63,30 @@ export async function POST(request: NextRequest) {
       if (response.ok && data.success) {
         // Extract call details from Pixpoc response
         const callData = data.data
+        
+        // Save call to backend database so webhook can find it
+        const backendUrl = process.env.BACKEND_URL || "http://localhost:8000"
+        try {
+          await fetch(`${backendUrl}/api/calls/save`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              phone: phone,
+              call_id: callData.call.id,
+              contact_id: callData.contact?.id,
+              tracking_id: callData.call.trackingId,
+              campaign_id: callData.campaign?.id,
+            }),
+          }).catch((err) => {
+            // Log but don't fail - webhook might still work if call exists
+            console.warn("Failed to save call to backend database:", err)
+          })
+        } catch (dbError) {
+          // Continue even if database save fails
+          console.warn("Database save error (non-critical):", dbError)
+        }
 
         return NextResponse.json({
           success: true,
