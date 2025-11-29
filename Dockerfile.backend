@@ -25,11 +25,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . /app/
 
-# Create necessary directories
-RUN mkdir -p /app/database /app/reports
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/database /app/reports && \
+    chmod -R 755 /app/database /app/reports
 
-# Initialize database
+# Initialize database (create file if it doesn't exist)
 RUN python -c "from database.db import init_db; init_db()" || true
+
+# Ensure database directory is writable
+RUN chmod -R 777 /app/database /app/reports
 
 # Expose port
 EXPOSE 8000

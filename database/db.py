@@ -5,11 +5,20 @@ Simple database for storing users, calls, reports, and financial data
 
 import sqlite3
 import json
+import os
 from pathlib import Path
 from datetime import datetime
 
-# Database path
-DB_PATH = Path(__file__).parent / "financebot.db"
+# Database path - use environment variable if set, otherwise default
+DB_PATH_ENV = os.getenv("DATABASE_PATH")
+if DB_PATH_ENV:
+    DB_PATH = Path(DB_PATH_ENV)
+    # Ensure parent directory exists
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+else:
+    DB_PATH = Path(__file__).parent / "financebot.db"
+    # Ensure directory exists
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
 def get_connection():
