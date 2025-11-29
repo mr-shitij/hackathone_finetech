@@ -13,8 +13,8 @@ weasyprint>=60.1
 
 # CrewAI & AI Agents
 crewai>=1.6.0
-litellm
-openai
+litellm>=1.77.0
+openai>=1.99.0
 duckduckgo-search>=4.1.0
 
 # Utilities
