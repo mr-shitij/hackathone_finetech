@@ -1,21 +1,23 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Phone, Calendar, MessageSquare, Play, Loader2 } from "lucide-react"
+import { Phone, Calendar, MessageSquare, Play, Loader2, GraduationCap } from "lucide-react"
 import { getUser } from "@/lib/auth"
 import { useToast } from "@/hooks/use-toast"
 
 export function AIVoiceCoach() {
   const [user, setUser] = useState<{ phone: string; name: string } | null>(null)
   const [loading, setLoading] = useState(false)
+  const [coachingLoading, setCoachingLoading] = useState(false)
   const [callInitiated, setCallInitiated] = useState(false)
+  const [coachingCallInitiated, setCoachingCallInitiated] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
     setUser(getUser())
   }, [])
 
-  const handleStartCall = async () => {
+  const handleStartCall = async (agentType: "planning" | "coaching" = "planning") => {
     if (!user) {
       toast({
         title: "Error",
@@ -25,12 +27,22 @@ export function AIVoiceCoach() {
       return
     }
 
-    setLoading(true)
+    // Set loading state based on agent type
+    if (agentType === "coaching") {
+      setCoachingLoading(true)
+    } else {
+      setLoading(true)
+    }
+
     try {
       const response = await fetch("/api/calls/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: user.phone, name: user.name }),
+        body: JSON.stringify({ 
+          phone: user.phone, 
+          name: user.name,
+          agentType: agentType 
+        }),
       })
 
       let data
@@ -50,10 +62,14 @@ export function AIVoiceCoach() {
       }
 
       if (response.ok) {
-        setCallInitiated(true)
+        if (agentType === "coaching") {
+          setCoachingCallInitiated(true)
+        } else {
+          setCallInitiated(true)
+        }
         toast({
           title: "Call Initiated",
-          description: `Call started successfully! You will receive a call shortly.`,
+          description: `${agentType === "coaching" ? "Coaching" : "Financial planning"} call started successfully! You will receive a call shortly.`,
         })
       } else {
         // Handle error response
@@ -78,7 +94,11 @@ export function AIVoiceCoach() {
         variant: "destructive",
       })
     } finally {
-      setLoading(false)
+      if (agentType === "coaching") {
+        setCoachingLoading(false)
+      } else {
+        setLoading(false)
+      }
     }
   }
 
@@ -92,7 +112,7 @@ export function AIVoiceCoach() {
       </div>
 
       <div className="space-y-4">
-        {callInitiated ? (
+        {(callInitiated || coachingCallInitiated) && (
           <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
             <div className="flex items-center gap-2 mb-2">
               <Phone className="w-4 h-4 text-green-400" />
@@ -100,37 +120,36 @@ export function AIVoiceCoach() {
             </div>
             <p className="text-sm font-medium text-foreground">Call initiated successfully!</p>
             <p className="text-xs text-muted-foreground mt-1">
-              You will receive a call shortly from our AI financial advisor.
+              You will receive a call shortly from our AI {callInitiated ? "financial advisor" : "coaching agent"}.
             </p>
           </div>
-        ) : (
-          <>
-            <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
-              <div className="flex items-center gap-2 mb-2">
-                <Calendar className="w-4 h-4 text-purple-400" />
-                <span className="text-xs text-muted-foreground">Get Personalized Advice</span>
-              </div>
-              <p className="text-sm font-medium text-foreground">Start an AI call now</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Talk to our AI financial advisor and receive personalized recommendations
-              </p>
-            </div>
-
-            <div className="p-3 rounded-lg bg-secondary/30">
-              <div className="flex items-center gap-2 mb-2">
-                <MessageSquare className="w-4 h-4 text-teal-400" />
-                <span className="text-xs text-muted-foreground">What to expect</span>
-              </div>
-              <p className="text-sm text-foreground/90 leading-relaxed">
-                The AI will ask about your income, expenses, goals, and risk tolerance to create a personalized financial plan.
-              </p>
-            </div>
-          </>
         )}
 
+        <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+          <div className="flex items-center gap-2 mb-2">
+            <Calendar className="w-4 h-4 text-purple-400" />
+            <span className="text-xs text-muted-foreground">Get Personalized Advice</span>
+          </div>
+          <p className="text-sm font-medium text-foreground">Start an AI call now</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Talk to our AI financial advisor and receive personalized recommendations
+          </p>
+        </div>
+
+        <div className="p-3 rounded-lg bg-secondary/30">
+          <div className="flex items-center gap-2 mb-2">
+            <MessageSquare className="w-4 h-4 text-teal-400" />
+            <span className="text-xs text-muted-foreground">What to expect</span>
+          </div>
+          <p className="text-sm text-foreground/90 leading-relaxed">
+            The AI will ask about your income, expenses, goals, and risk tolerance to create a personalized financial plan.
+          </p>
+        </div>
+
+        {/* Financial Planning Call Button */}
         <button
-          onClick={handleStartCall}
-          disabled={loading || callInitiated}
+          onClick={() => handleStartCall("planning")}
+          disabled={loading || callInitiated || coachingLoading || coachingCallInitiated}
           className="w-full p-3 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity group disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
@@ -141,12 +160,36 @@ export function AIVoiceCoach() {
           ) : callInitiated ? (
             <>
               <Phone className="w-4 h-4 text-white" />
-              <span className="text-sm font-medium text-white">Call Initiated</span>
+              <span className="text-sm font-medium text-white">Planning Call Initiated</span>
             </>
           ) : (
             <>
               <Play className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-medium text-white">Start AI Call</span>
+              <span className="text-sm font-medium text-white">Start Financial Planning Call</span>
+            </>
+          )}
+        </button>
+
+        {/* Coaching Call Button */}
+        <button
+          onClick={() => handleStartCall("coaching")}
+          disabled={loading || callInitiated || coachingLoading || coachingCallInitiated}
+          className="w-full p-3 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity group disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {coachingLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 text-white animate-spin" />
+              <span className="text-sm font-medium text-white">Initiating...</span>
+            </>
+          ) : coachingCallInitiated ? (
+            <>
+              <Phone className="w-4 h-4 text-white" />
+              <span className="text-sm font-medium text-white">Coaching Call Initiated</span>
+            </>
+          ) : (
+            <>
+              <GraduationCap className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
+              <span className="text-sm font-medium text-white">Start Coaching Call</span>
             </>
           )}
         </button>

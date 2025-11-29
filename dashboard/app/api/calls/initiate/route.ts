@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
   try {
-    const { phone, name } = await request.json()
+    const { phone, name, agentType } = await request.json()
 
     if (!phone) {
       return NextResponse.json(
@@ -14,12 +14,18 @@ export async function POST(request: NextRequest) {
     // Get Pixpoc API credentials from environment
     const pixpocApiKey = process.env.PIXPOC_API_KEY
     const pixpocAgentId = process.env.PIXPOC_AGENT_ID
+    const pixpocCoachingAgentId = process.env.PIXPOC_COACHING_AGENT_ID
     const pixpocFromNumberId = process.env.PIXPOC_FROM_NUMBER_ID
     const pixpocBaseUrl = process.env.PIXPOC_API_BASE_URL || "https://app.pixpoc.ai"
 
-    if (!pixpocApiKey || !pixpocAgentId) {
+    // Select agent ID based on agentType
+    const selectedAgentId = agentType === "coaching" && pixpocCoachingAgentId 
+      ? pixpocCoachingAgentId 
+      : pixpocAgentId
+
+    if (!pixpocApiKey || !selectedAgentId) {
       return NextResponse.json(
-        { error: "PIXPOC_API_KEY and PIXPOC_AGENT_ID must be configured in .env.local" },
+        { error: `PIXPOC_API_KEY and ${agentType === "coaching" ? "PIXPOC_COACHING_AGENT_ID" : "PIXPOC_AGENT_ID"} must be configured in .env.local` },
         { status: 500 }
       )
     }
@@ -35,7 +41,7 @@ export async function POST(request: NextRequest) {
     // Prepare Pixpoc API request payload
     const payload: any = {
       toNumber: formattedPhone,
-      agentId: pixpocAgentId,
+      agentId: selectedAgentId,
     }
 
     if (name) {
