@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react"
 import { AuthGuard } from "@/components/auth-guard"
 import { DashboardHeader } from "@/components/dashboard/header"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 import { Calculator, FileText, User, Home, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getUser } from "@/lib/auth"
+import { useToast } from "@/hooks/use-toast"
 
 interface Report {
   id: string
@@ -21,6 +22,8 @@ interface Report {
 export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
+  const [downloading, setDownloading] = useState<string | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -34,20 +37,79 @@ export default function ReportsPage() {
         const response = await fetch(`/api/reports?phone=${encodeURIComponent(user.phone)}`)
         if (response.ok) {
           const data = await response.json()
+          console.log("Reports fetched:", data)
           setReports(data)
+        } else {
+          console.error("Failed to fetch reports:", response.status, response.statusText)
+          toast({
+            title: "Error",
+            description: "Failed to load reports. Please try again.",
+            variant: "destructive",
+          })
         }
       } catch (error) {
         console.error("Failed to fetch reports:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load reports. Please try again.",
+          variant: "destructive",
+        })
       } finally {
         setLoading(false)
       }
     }
 
     fetchReports()
-  }, [])
+  }, [toast])
 
-  const financialReports = reports.filter((r) => r.type?.includes("financial"))
+  const handleDownload = async (report: Report) => {
+    try {
+      setDownloading(report.id)
+      const response = await fetch(
+        `/api/reports/download?path=${encodeURIComponent(report.path)}&filename=${encodeURIComponent(report.filename)}`
+      )
+
+      if (!response.ok) {
+        throw new Error("Failed to download file")
+      }
+
+      // Get the blob and create download link
+      const blob = await response.blob()
+      const url = globalThis.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = report.filename
+      document.body.appendChild(a)
+      a.click()
+      globalThis.URL.revokeObjectURL(url)
+      a.remove()
+
+      toast({
+        title: "Success",
+        description: "Report downloaded successfully",
+      })
+    } catch (error) {
+      console.error("Download error:", error)
+      toast({
+        title: "Error",
+        description: "Failed to download report. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setDownloading(null)
+    }
+  }
+
+  // Filter reports by type - comprehensive_planning is treated as financial
+  const financialReports = reports.filter((r) => 
+    r.type?.includes("financial") || r.type?.includes("comprehensive")
+  )
   const taxReports = reports.filter((r) => r.type?.includes("tax"))
+  const otherReports = reports.filter((r) => 
+    !r.type?.includes("financial") && 
+    !r.type?.includes("tax") && 
+    !r.type?.includes("comprehensive")
+  )
 
   return (
     <AuthGuard>
@@ -121,15 +183,14 @@ export default function ReportsPage() {
                                 📅 {new Date(report.date).toLocaleDateString()}
                               </p>
                             </div>
-                            <a
-                              href={`/api/reports/download?path=${encodeURIComponent(report.path)}&filename=${encodeURIComponent(report.filename)}`}
-                              download
+                            <Button
+                              variant="outline"
+                              onClick={() => handleDownload(report)}
+                              disabled={downloading === report.id}
                             >
-                              <Button variant="outline">
-                                <Download className="w-4 h-4 mr-2" />
-                                Download
-                              </Button>
-                            </a>
+                              <Download className="w-4 h-4 mr-2" />
+                              {downloading === report.id ? "Downloading..." : "Download"}
+                            </Button>
                           </div>
                         </CardContent>
                       </Card>
@@ -152,15 +213,44 @@ export default function ReportsPage() {
                                 📅 {new Date(report.date).toLocaleDateString()}
                               </p>
                             </div>
-                            <a
-                              href={`/api/reports/download?path=${encodeURIComponent(report.path)}&filename=${encodeURIComponent(report.filename)}`}
-                              download
+                            <Button
+                              variant="outline"
+                              onClick={() => handleDownload(report)}
+                              disabled={downloading === report.id}
                             >
-                              <Button variant="outline">
-                                <Download className="w-4 h-4 mr-2" />
-                                Download
-                              </Button>
-                            </a>
+                              <Download className="w-4 h-4 mr-2" />
+                              {downloading === report.id ? "Downloading..." : "Download"}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {otherReports.length > 0 && (
+                <div>
+                  <h2 className="text-xl font-semibold mb-4">📋 Other Reports</h2>
+                  <div className="space-y-4">
+                    {otherReports.map((report) => (
+                      <Card key={report.id}>
+                        <CardContent className="p-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-semibold mb-1">{report.title}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                📅 {new Date(report.date).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <Button
+                              variant="outline"
+                              onClick={() => handleDownload(report)}
+                              disabled={downloading === report.id}
+                            >
+                              <Download className="w-4 h-4 mr-2" />
+                              {downloading === report.id ? "Downloading..." : "Download"}
+                            </Button>
                           </div>
                         </CardContent>
                       </Card>

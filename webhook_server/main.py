@@ -121,6 +121,7 @@ async def process_completed_call(
         
         # Update database - only store report info
         logger.info("Updating database...")
+        logger.info(f"Saving report to database - phone: {phone_number}, report_id: {report_metadata['id']}, path: {report_metadata['pdf_path']}")
         update_call_status(call_id, "completed")
         
         save_report(
@@ -131,6 +132,8 @@ async def process_completed_call(
             filename=report_metadata['pdf_filename'],
             file_path=report_metadata['pdf_path']
         )
+        
+        logger.info(f"✅ Report saved to database for {phone_number}")
         
         logger.info(f"✅ Call processing completed: {call_id}")
         
@@ -357,13 +360,13 @@ async def get_financial_data(phone: str):
 
 
 @app.get("/api/reports/download")
-async def download_report(path: str, filename: str):
+async def download_report(path: str, filename: str = None):
     """
     Download a report PDF file.
     
     Args:
         path: File path to the PDF (relative to /app/reports or absolute)
-        filename: Filename for download
+        filename: Optional filename for download
         
     Returns:
         PDF file stream
@@ -379,38 +382,49 @@ async def download_report(path: str, filename: str):
                 detail="Path parameter is required"
             )
         
+        # Get reports base directory
+        reports_base = Path(os.getenv("REPORTS_PATH", "/app/reports")).resolve()
+        
         # Resolve file path
         file_path = Path(path)
         
         # If relative path, make it relative to reports directory
         if not file_path.is_absolute():
-            reports_base = Path(os.getenv("REPORTS_PATH", "/app/reports"))
             file_path = reports_base / path.lstrip("/")
         else:
-            # Ensure it's within the reports directory for security
-            reports_base = Path(os.getenv("REPORTS_PATH", "/app/reports"))
+            # For absolute paths, ensure they're within reports directory
+            file_path = file_path.resolve()
+            # Check if the path is within the reports directory
             try:
-                file_path.relative_to(reports_base.resolve())
+                file_path.relative_to(reports_base)
             except ValueError:
+                # Path is outside reports directory - security check
+                logger.warning(f"Access attempt outside reports dir: {file_path} (base: {reports_base})")
                 raise HTTPException(
                     status_code=403,
                     detail="Access denied: File path outside reports directory"
                 )
         
+        # Ensure final path is resolved
+        file_path = file_path.resolve()
+        
         # Check if file exists
         if not file_path.exists():
-            logger.error(f"Report file not found: {file_path}")
+            logger.error(f"Report file not found: {file_path} (original path: {path})")
             raise HTTPException(
                 status_code=404,
                 detail=f"Report file not found: {path}"
             )
         
-        logger.info(f"Serving report file: {file_path} as {filename}")
+        # Use provided filename or extract from path
+        download_filename = filename or file_path.name
+        
+        logger.info(f"Serving report file: {file_path} as {download_filename}")
         
         # Return file with proper headers
         return FileResponse(
             path=str(file_path),
-            filename=filename or file_path.name,
+            filename=download_filename,
             media_type="application/pdf"
         )
         

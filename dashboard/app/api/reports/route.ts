@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         // Backend returns array directly, or wrapped in {reports: [...]}
         // Handle both cases
         if (Array.isArray(data)) {
-          return NextResponse.json(data)
+        return NextResponse.json(data)
         } else if (data.reports && Array.isArray(data.reports)) {
           return NextResponse.json(data.reports)
         } else {

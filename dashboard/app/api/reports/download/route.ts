@@ -14,15 +14,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Call Python backend API to get the file
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:8000"
+    // Use NEXT_PUBLIC_BACKEND_URL for client-side, or BACKEND_URL for server-side
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || "http://localhost:8000"
     
     try {
-      const response = await fetch(
-        `${backendUrl}/api/reports/download?path=${encodeURIComponent(filePath)}&filename=${encodeURIComponent(filename)}`,
-        {
-          method: "GET",
-        }
-      )
+      const downloadUrl = `${backendUrl}/api/reports/download?path=${encodeURIComponent(filePath)}&filename=${encodeURIComponent(filename)}`
+      console.log("Downloading from:", downloadUrl)
+      
+      const response = await fetch(downloadUrl, {
+        method: "GET",
+      })
 
       if (response.ok) {
         // Get the file as a blob
