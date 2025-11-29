@@ -4,6 +4,10 @@ import yaml
 from crewai import Agent, Task, Crew, Process, LLM
 from finance_bot.financial_planning.tools.custom_tool import search_tool
 from finance_bot.tax_planning.tools.tax_calculator import tax_calculator_tool
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Define file paths
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -33,10 +37,16 @@ class ComprehensivePlanningCrew:
         self.agents_config = load_config(AGENTS_CONFIG)
         self.tasks_config = load_config(TASKS_CONFIG)
         
+        # Get OpenAI API key from environment
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        if not openai_api_key:
+            raise ValueError("OPENAI_API_KEY environment variable is required")
+        
         # Initialize OpenAI GPT-4o with proper tool support
         self.llm = LLM(
             model="gpt-4o",
-            temperature=0.1
+            temperature=0.1,
+            api_key=openai_api_key
         )
 
     def create_agents(self):
