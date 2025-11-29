@@ -15,18 +15,20 @@ if [ -f ".webhook.pid" ]; then
     rm .webhook.pid
 fi
 
-# Kill Streamlit app
-if [ -f ".streamlit.pid" ]; then
-    STREAMLIT_PID=$(cat .streamlit.pid)
-    if ps -p $STREAMLIT_PID > /dev/null 2>&1; then
-        kill $STREAMLIT_PID
-        echo "✅ Streamlit app stopped (PID: $STREAMLIT_PID)"
+# Kill Next.js dashboard
+if [ -f ".dashboard.pid" ]; then
+    DASHBOARD_PID=$(cat .dashboard.pid)
+    if ps -p $DASHBOARD_PID > /dev/null 2>&1; then
+        kill $DASHBOARD_PID
+        echo "✅ Next.js dashboard stopped (PID: $DASHBOARD_PID)"
     fi
-    rm .streamlit.pid
+    rm .dashboard.pid
 fi
 
-# Also kill any remaining uvicorn/streamlit processes
+# Also kill any remaining uvicorn/next/streamlit processes
 pkill -f "uvicorn main:app" 2>/dev/null
+pkill -f "next dev" 2>/dev/null
+pkill -f "next start" 2>/dev/null
 pkill -f "streamlit run" 2>/dev/null
 
 echo "✅ All services stopped"

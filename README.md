@@ -1,6 +1,6 @@
 # 💰 FinanceBot - AI-Powered Financial Advisory Platform
 
-> **All-Python, Streamlit-based financial advisory system powered by AI agents**
+> **Next.js + Python backend financial advisory system powered by AI agents**
 
 FinanceBot provides personalized financial planning through AI-powered voice conversations and generates comprehensive financial reports.
 
@@ -11,7 +11,7 @@ FinanceBot provides personalized financial planning through AI-powered voice con
 - 🎯 **Voice-based Data Collection** - Talk to AI agents via Pixpoc.ai
 - 📊 **Personalized Financial Reports** - AI-generated PDF reports  
 - 🧮 **Financial Calculators** - SIP, EMI, and Tax calculators
-- 📱 **Clean Streamlit UI** - Simple, intuitive interface
+- 🎨 **Modern Next.js UI** - Beautiful, responsive dashboard
 - 🤖 **Multi-Agent System** - CrewAI-powered financial analysis
 - 💾 **SQLite Database** - No complex setup required
 
@@ -19,25 +19,37 @@ FinanceBot provides personalized financial planning through AI-powered voice con
 
 ## 🚀 Quick Start
 
-### 1. Install & Configure
+### 1. Prerequisites
+
+```bash
+# Install Node.js (v18+)
+# macOS: brew install node
+# Linux: apt-get install nodejs npm
+# Windows: Download from https://nodejs.org/
+
+# Install Python (v3.8+)
+python3 --version
+```
+
+### 2. Install & Configure
 
 ```bash
 # Clone repository
 git clone <your-repo>
 cd FinanceBot
 
-# Install dependencies
+# Install Python dependencies
 pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env
-# Edit .env and add your PIXPOC_API_KEY
+# Edit .env and add your PIXPOC_API_KEY, PIXPOC_AGENT_ID
 ```
 
-### 2. Start Services
+### 3. Start Services
 
 ```bash
-# Start everything with one command
+# Start everything with one command (installs Node dependencies automatically)
 ./run.sh
 ```
 
@@ -47,16 +59,18 @@ Or manually:
 # Terminal 1: Webhook server
 cd webhook_server && uvicorn main:app --port 8000
 
-# Terminal 2: Streamlit app
-streamlit run streamlit_app/app.py
+# Terminal 2: Next.js dashboard
+cd dashboard
+npm install
+npm run dev
 
-# Terminal 3: Ollama (for AI agents)
+# Terminal 3: Ollama (for AI agents - optional)
 ollama serve && ollama pull mistral-nemo
 ```
 
-### 3. Access the App
+### 4. Access the App
 
-- **Streamlit UI:** http://localhost:8501
+- **Next.js Dashboard:** http://localhost:3000
 - **Webhook API:** http://localhost:8000
 - **API Docs:** http://localhost:8000/docs
 
@@ -66,8 +80,8 @@ ollama serve && ollama pull mistral-nemo
 
 ### Step 1: Login
 ```
-1. Open http://localhost:8501
-2. Enter phone number: +919876543210
+1. Open http://localhost:3000
+2. Enter phone number: +919876543210 (or any 10-digit number)
 3. Enter OTP: 222222 (test OTP)
 4. Access dashboard
 ```
@@ -112,16 +126,21 @@ ollama serve && ollama pull mistral-nemo
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│                  STREAMLIT UI                          │
-│  Login → Dashboard → Calculators → Reports             │
+│              NEXT.JS DASHBOARD (Frontend)              │
+│  Login → Dashboard → Calculators → Reports → Profile   │
+│  • React Components                                    │
+│  • API Routes (/api/*)                                 │
+│  • Calls Pixpoc API directly                           │
 └────────────────┬───────────────────────────────────────┘
                  │
+                 │ (API calls)
                  ↓
 ┌────────────────────────────────────────────────────────┐
-│              PYTHON SERVICES                           │
+│              PYTHON BACKEND (FastAPI)                  │
 │  • pixpoc_client.py    (API integration)               │
 │  • agent_service.py    (CrewAI orchestration)          │
 │  • report_service.py   (PDF generation)                │
+│  • Webhook receiver    (/webhook/pixpoc)               │
 └────────────────┬───────────────────────────────────────┘
                  │
         ┌────────┼───────┬────────────┬────────┐
@@ -143,53 +162,47 @@ ollama serve && ollama pull mistral-nemo
 
 ```
 FinanceBot/
-├── streamlit_app/              # Streamlit UI
-│   ├── app.py                 # Main app
-│   ├── components/
-│   │   ├── auth.py            # Login/OTP
-│   │   └── dashboard.py       # Dashboard UI
-│   ├── pages/
-│   │   ├── calculators.py     # Financial calculators
-│   │   ├── reports.py         # Report listing
-│   │   └── profile.py         # User profile
-│   └── utils/
-│       ├── session.py         # Session management
-│       └── helpers.py         # Utility functions
+├── dashboard/                  # Next.js Frontend
+│   ├── app/                   # Next.js app router
+│   │   ├── api/              # API routes
+│   │   │   ├── calls/        # Call initiation
+│   │   │   ├── reports/      # Reports API
+│   │   │   └── auth/         # Auth API
+│   │   ├── login/            # Login page
+│   │   ├── calculators/      # Calculators page
+│   │   ├── reports/          # Reports page
+│   │   └── profile/          # Profile page
+│   ├── components/           # React components
+│   │   └── dashboard/        # Dashboard widgets
+│   ├── lib/                  # Utilities
+│   └── package.json          # Node dependencies
 │
-├── webhook_server/             # FastAPI webhook receiver
-│   └── main.py                # Webhook endpoints
+├── streamlit_app/             # Legacy Streamlit UI (optional)
+│   └── ...
 │
-├── services/                   # Business logic
-│   ├── pixpoc_client.py       # Pixpoc API client
-│   ├── agent_service.py       # Agent orchestration
-│   └── report_service.py      # PDF generation
+├── webhook_server/            # FastAPI webhook receiver
+│   └── main.py               # Webhook endpoints
 │
-├── database/                   # SQLite database
-│   └── db.py                  # Database operations
+├── services/                  # Business logic
+│   ├── pixpoc_client.py      # Pixpoc API client
+│   ├── agent_service.py      # Agent orchestration
+│   └── report_service.py     # PDF generation
 │
-├── finance_bot/                # CrewAI agents (existing)
+├── database/                  # SQLite database
+│   └── db.py                 # Database operations
+│
+├── finance_bot/               # CrewAI agents
 │   ├── financial_planning/
-│   │   ├── main.py
-│   │   ├── config/
-│   │   └── tools/
-│   └── tax_planning/
-│       ├── main.py
-│       ├── config/
-│       └── tools/
+│   ├── tax_planning/
+│   └── comprehensive_planning/
 │
-├── reports/                    # Generated PDFs (organized by phone)
+├── reports/                   # Generated PDFs
 │   └── +91XXXXXXXXXX/
-│       ├── financial_plan_2025-11-28.pdf
-│       └── tax_plan_2025-11-28.pdf
 │
-├── docs/                       # Documentation
-│   └── agent-specifications.md
-│
-├── requirements.txt            # Python dependencies
-├── run.sh                      # Startup script
-├── .env.example               # Environment template
-├── QUICKSTART.md              # Quick start guide
-├── SIMPLIFIED_ARCHITECTURE.md # Architecture doc
+├── requirements.txt           # Python dependencies
+├── run.sh                     # Startup script
+├── stop.sh                    # Stop script
+├── .env                       # Environment variables
 └── README.md                  # This file
 ```
 
@@ -199,7 +212,8 @@ FinanceBot/
 
 | Component | Technology |
 |-----------|-----------|
-| **Frontend** | Streamlit |
+| **Frontend** | Next.js 16, React 19, TypeScript |
+| **UI Components** | Radix UI, Tailwind CSS |
 | **Webhook Server** | FastAPI |
 | **Database** | SQLite |
 | **AI Agents** | CrewAI |
@@ -228,8 +242,8 @@ REPORTS_PATH=./reports
 WEBHOOK_HOST=0.0.0.0
 WEBHOOK_PORT=8000
 
-# Streamlit
-STREAMLIT_PORT=8501
+# Next.js Dashboard
+NEXTJS_PORT=3000
 
 # Ollama
 OLLAMA_BASE_URL=http://localhost:11434
@@ -336,6 +350,7 @@ curl -X POST http://localhost:8000/webhook/pixpoc \
 ## 📚 Documentation
 
 - **Quick Start:** `QUICKSTART.md`
+- **Deployment Guide:** `DOKPLOY_DEPLOY.md`
 - **Architecture:** `SIMPLIFIED_ARCHITECTURE.md`
 - **Agent Specs:** `docs/agent-specifications.md`
 - **Pixpoc API:** `API_CALL_ANALYSIS_TRANSCRIPT_CONTACT.md`
@@ -344,22 +359,41 @@ curl -X POST http://localhost:8000/webhook/pixpoc \
 
 ## 🚢 Deployment
 
-### Streamlit Cloud
+### Docker Compose (VPS with Dokploy)
+
+The easiest way to deploy to a VPS is using Docker Compose with Dokploy:
+
 ```bash
-# Push to GitHub
+# 1. Push code to GitHub
 git push origin main
 
-# Deploy on Streamlit Cloud
-# https://streamlit.io/cloud
+# 2. In Dokploy:
+#    - Create new application
+#    - Select Docker Compose
+#    - Connect GitHub repo
+#    - Set docker-compose.yml path
+#    - Add environment variables
+#    - Deploy!
 ```
 
-### Railway / Render
-```bash
-# Configure build command
-pip install -r requirements.txt
+**See `DOKPLOY_DEPLOY.md` for detailed step-by-step instructions.**
 
-# Configure start command
-./run.sh
+### Manual Docker Compose
+
+```bash
+# Clone and setup
+git clone <your-repo>
+cd hackathone_finetech
+
+# Create .env file
+cp .env.example .env
+# Edit .env with your API keys
+
+# Start services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
 ```
 
 ---
@@ -406,6 +440,8 @@ Start FinanceBot and get personalized financial advice powered by AI!
 ./run.sh
 ```
 
-Then open http://localhost:8501 and start exploring! 🚀
+Then open http://localhost:3000 and start exploring! 🚀
+
+**Note:** The dashboard requires Node.js. If you prefer the Streamlit UI, you can still use `streamlit run streamlit_app/app.py` separately.
 
 

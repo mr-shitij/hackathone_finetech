@@ -23,13 +23,13 @@ fi
 echo "🔌 Activating virtual environment..."
 source venv/bin/activate
 
-# Check if core dependencies are installed
-if ! python -c "import streamlit" 2>/dev/null; then
-    echo "📥 Installing dependencies (this may take a minute)..."
-    pip install streamlit fastapi "uvicorn[standard]" httpx requests markdown python-dotenv plotly loguru pyyaml
-    echo "✅ Dependencies installed"
+# Check if core Python dependencies are installed
+if ! python -c "import fastapi" 2>/dev/null; then
+    echo "📥 Installing Python dependencies (this may take a minute)..."
+    pip install fastapi "uvicorn[standard]" httpx requests markdown python-dotenv plotly loguru pyyaml
+    echo "✅ Python dependencies installed"
 else
-    echo "✅ Dependencies already installed"
+    echo "✅ Python dependencies already installed"
 fi
 
 # Initialize database
@@ -58,7 +58,7 @@ REPORTS_PATH=./reports
 # Server Configuration
 WEBHOOK_HOST=127.0.0.1
 WEBHOOK_PORT=8000
-STREAMLIT_PORT=8501
+NEXTJS_PORT=3000
 
 # Ollama Configuration (for AI agents)
 OLLAMA_BASE_URL=http://localhost:11434
@@ -96,18 +96,74 @@ else
     echo "   Check logs/webhook.log for details"
 fi
 
-# Start Streamlit app in background
-echo "🌐 Starting Streamlit app on port 8501..."
-mkdir -p logs
-nohup streamlit run streamlit_app/app.py --server.port 8501 --server.address 127.0.0.1 --server.headless true > logs/streamlit.log 2>&1 &
-STREAMLIT_PID=$!
-sleep 3
+# Check if Node.js is installed
+if ! command -v node &> /dev/null; then
+    echo "❌ Node.js is not installed"
+    echo "   Please install Node.js from https://nodejs.org/"
+    echo "   Or use: brew install node (on macOS)"
+    exit 1
+fi
 
-if ps -p $STREAMLIT_PID > /dev/null; then
-    echo "✅ Streamlit app running (PID: $STREAMLIT_PID)"
+# Check if npm is installed
+if ! command -v npm &> /dev/null; then
+    echo "❌ npm is not installed"
+    exit 1
+fi
+
+# Setup dashboard environment file
+echo "⚙️  Checking dashboard environment..."
+cd dashboard
+if [ ! -f ".env.local" ]; then
+    echo "📝 Creating dashboard/.env.local from root .env..."
+    if [ -f "../.env" ]; then
+        # Extract Pixpoc variables from root .env and create .env.local
+        grep -E "^PIXPOC_" ../.env > .env.local 2>/dev/null || true
+        echo "BACKEND_URL=http://localhost:8000" >> .env.local
+        echo "✅ Created .env.local"
+        echo "⚠️  Review dashboard/.env.local and update if needed"
+    else
+        echo "⚠️  No .env file found. Creating default .env.local..."
+        cat > .env.local << 'EOF'
+# Pixpoc API Configuration (from root .env)
+PIXPOC_API_BASE_URL=https://app.pixpoc.ai
+PIXPOC_API_KEY=your_api_key_here
+PIXPOC_AGENT_ID=your_agent_id_here
+PIXPOC_FROM_NUMBER_ID=your_from_number_id_here
+
+# Backend API URL
+BACKEND_URL=http://localhost:8000
+EOF
+        echo "⚠️  IMPORTANT: Edit dashboard/.env.local and add your Pixpoc credentials"
+    fi
 else
-    echo "❌ Streamlit app failed to start"
-    echo "   Check logs/streamlit.log for details"
+    echo "✅ Dashboard .env.local exists"
+fi
+
+# Install Next.js dependencies if needed
+echo "📦 Checking Next.js dependencies..."
+if [ ! -d "node_modules" ]; then
+    echo "📥 Installing Next.js dependencies (this may take a minute)..."
+    npm install
+    echo "✅ Dependencies installed"
+else
+    echo "✅ Dependencies already installed"
+fi
+cd ..
+
+# Start Next.js dashboard in background
+echo "🌐 Starting Next.js dashboard on port 3000..."
+mkdir -p logs
+cd dashboard
+nohup npm run dev > ../logs/dashboard.log 2>&1 &
+DASHBOARD_PID=$!
+cd ..
+sleep 5
+
+if ps -p $DASHBOARD_PID > /dev/null; then
+    echo "✅ Next.js dashboard running (PID: $DASHBOARD_PID)"
+else
+    echo "❌ Next.js dashboard failed to start"
+    echo "   Check logs/dashboard.log for details"
 fi
 
 echo ""
@@ -115,28 +171,32 @@ echo "════════════════════════�
 echo "✅ FinanceBot is running!"
 echo "════════════════════════════════════════════════════════"
 echo ""
-echo "📱 Streamlit App:    http://localhost:8501"
-echo "🔌 Webhook Server:   http://localhost:8000"
-echo "📚 API Docs:         http://localhost:8000/docs"
+echo "🎨 Next.js Dashboard: http://localhost:3000"
+echo "🔌 Webhook Server:    http://localhost:8000"
+echo "📚 API Docs:          http://localhost:8000/docs"
 echo ""
 echo "📝 Logs:"
-echo "   - Webhook:        logs/webhook.log"
-echo "   - Streamlit:      logs/streamlit.log"
+echo "   - Webhook:         logs/webhook.log"
+echo "   - Dashboard:       logs/dashboard.log"
 echo ""
 echo "🔐 Test Login:"
-echo "   - Phone:          9876543210"
-echo "   - OTP:            222222"
+echo "   - Phone:           +919876543210 (or any 10-digit)"
+echo "   - OTP:             222222"
 echo ""
-echo "🛑 To stop: ./stop.sh or kill $WEBHOOK_PID $STREAMLIT_PID"
+echo "⚠️  Environment Setup:"
+echo "   - Make sure .env has PIXPOC_API_KEY, PIXPOC_AGENT_ID"
+echo "   - Dashboard uses .env.local (copy from .env if needed)"
+echo ""
+echo "🛑 To stop: ./stop.sh or kill $WEBHOOK_PID $DASHBOARD_PID"
 echo ""
 echo "════════════════════════════════════════════════════════"
 echo ""
 
 # Save PIDs to file for easy stopping
 echo "$WEBHOOK_PID" > .webhook.pid
-echo "$STREAMLIT_PID" > .streamlit.pid
+echo "$DASHBOARD_PID" > .dashboard.pid
 
 echo "💡 Services running in background. You can close this terminal."
-echo "   View logs with: tail -f logs/streamlit.log"
+echo "   View logs with: tail -f logs/dashboard.log"
 echo ""
 

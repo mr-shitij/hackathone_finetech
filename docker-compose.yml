@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: financebot-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PIXPOC_API_BASE_URL=${PIXPOC_API_BASE_URL:-https://app.pixpoc.ai}
+      - PIXPOC_API_KEY=${PIXPOC_API_KEY}
+      - PIXPOC_AGENT_ID=${PIXPOC_AGENT_ID}
+      - PIXPOC_FROM_NUMBER_ID=${PIXPOC_FROM_NUMBER_ID}
+      - DATABASE_PATH=/app/database/financebot.db
+      - REPORTS_PATH=/app/reports
+      - WEBHOOK_HOST=0.0.0.0
+      - WEBHOOK_PORT=8000
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://localhost:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-mistral-nemo}
+    volumes:
+      - ./database:/app/database
+      - ./reports:/app/reports
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - financebot-network
+
+  frontend:
+    build:
+      context: ./dashboard
+      dockerfile: ../Dockerfile.frontend
+    container_name: financebot-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - PIXPOC_API_BASE_URL=${PIXPOC_API_BASE_URL:-https://app.pixpoc.ai}
+      - PIXPOC_API_KEY=${PIXPOC_API_KEY}
+      - PIXPOC_AGENT_ID=${PIXPOC_AGENT_ID}
+      - PIXPOC_FROM_NUMBER_ID=${PIXPOC_FROM_NUMBER_ID}
+      - BACKEND_URL=${BACKEND_URL:-http://backend:8000}
+      - NODE_ENV=production
+      - NEXT_PUBLIC_BACKEND_URL=${BACKEND_URL:-http://backend:8000}
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - financebot-network
+
+networks:
+  financebot-network:
+    driver: bridge
+
+volumes:
+  database-data:
+  reports-data:
+

@@ -1,0 +1,64 @@
+# Git
+.git
+.gitignore
+.github
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.next
+out
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Database (will be mounted as volume)
+database/*.db
+database/*.db-journal
+
+# Reports (will be mounted as volume)
+reports/*
+
+# Documentation
+*.md
+docs/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Misc
+.pid
+*.pid
+.cache
+
