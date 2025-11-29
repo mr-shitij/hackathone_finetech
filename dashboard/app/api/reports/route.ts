@@ -24,7 +24,15 @@ export async function GET(request: NextRequest) {
 
       if (response.ok) {
         const data = await response.json()
-        return NextResponse.json(data)
+        // Backend returns array directly, or wrapped in {reports: [...]}
+        // Handle both cases
+        if (Array.isArray(data)) {
+          return NextResponse.json(data)
+        } else if (data.reports && Array.isArray(data.reports)) {
+          return NextResponse.json(data.reports)
+        } else {
+          return NextResponse.json([])
+        }
       } else {
         return NextResponse.json([])
       }

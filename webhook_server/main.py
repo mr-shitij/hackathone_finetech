@@ -19,7 +19,7 @@ sys.path.insert(0, str(project_root))
 from services.pixpoc_client import PixpocClient
 from services.agent_service import AgentService
 from services.report_service import ReportService
-from database.db import update_call_status, save_report, update_financial_data, get_call_by_tracking_id, get_call_by_id, save_call as db_save_call
+from database.db import update_call_status, save_report, update_financial_data, get_call_by_tracking_id, get_call_by_id, save_call as db_save_call, get_user_reports, get_user_financial_data
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -278,6 +278,81 @@ async def save_call(request: SaveCallRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Error saving call: {str(e)}"
+        )
+
+
+@app.get("/api/reports")
+async def get_reports(phone: str):
+    """
+    Get all reports for a user.
+    
+    Args:
+        phone: User's phone number
+        
+    Returns:
+        List of reports with metadata
+    """
+    try:
+        if not phone:
+            raise HTTPException(
+                status_code=400,
+                detail="Phone number required"
+            )
+        
+        logger.info(f"Fetching reports for {phone}")
+        reports = get_user_reports(phone)
+        
+        # Return reports array directly (frontend expects array)
+        return reports
+        
+    except Exception as e:
+        logger.error(f"Error fetching reports: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching reports: {str(e)}"
+        )
+
+
+@app.get("/api/financial-data")
+async def get_financial_data(phone: str):
+    """
+    Get user's financial summary data.
+    
+    Args:
+        phone: User's phone number
+        
+    Returns:
+        Financial data including income, savings, expenses, etc.
+    """
+    try:
+        if not phone:
+            raise HTTPException(
+                status_code=400,
+                detail="Phone number required"
+            )
+        
+        logger.info(f"Fetching financial data for {phone}")
+        financial_data = get_user_financial_data(phone)
+        
+        # Calculate savings rate
+        income = financial_data.get('income', 0)
+        savings = financial_data.get('savings', 0)
+        savings_rate = (savings / income * 100) if income > 0 else 0
+        
+        return {
+            "success": True,
+            "income": financial_data.get('income', 0),
+            "savings": financial_data.get('savings', 0),
+            "expenses": financial_data.get('expenses', 0),
+            "savingsRate": round(savings_rate, 2),
+            "data": financial_data.get('data', {})
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching financial data: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching financial data: {str(e)}"
         )
 
 
