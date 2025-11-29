@@ -1,27 +1,27 @@
 # FastAPI (webhook server)
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
 pydantic>=2.11.9,<3.0.0
 
 # HTTP Client
-httpx==0.25.1
-requests==2.31.0
+httpx>=0.25.1
+requests>=2.31.0
 
 # PDF Generation
-markdown==3.5.1
-weasyprint==60.1
+markdown>=3.5.1
+weasyprint>=60.1
 
 # CrewAI & AI Agents
-crewai==1.6.0
+crewai>=1.6.0
 litellm
 openai
-duckduckgo-search==4.1.0
+duckduckgo-search>=4.1.0
 
 # Utilities
 python-dotenv>=1.1.1
-pyyaml==6.0.1
-loguru==0.7.2
+pyyaml>=6.0.1
+loguru>=0.7.2
 
 # Date/Time
-python-dateutil==2.8.2
+python-dateutil>=2.8.2
 
