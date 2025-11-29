@@ -19,7 +19,7 @@ sys.path.insert(0, str(project_root))
 from services.pixpoc_client import PixpocClient
 from services.agent_service import AgentService
 from services.report_service import ReportService
-from database.db import update_call_status, save_report, update_financial_data, get_call_by_tracking_id, get_call_by_id
+from database.db import update_call_status, save_report, update_financial_data, get_call_by_tracking_id, get_call_by_id, save_call as db_save_call
 from dotenv import load_dotenv
 
 load_dotenv()
